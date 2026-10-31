@@ -1,0 +1,150 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>CARO.ONLINE</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <header class="header">
+        <h2>✕ CARO<span>.ONLINE</span></h2>
+        <div class="online">● MULTIPLAYER</div>
+    </header>
+
+    <main>
+
+        <!-- SẢNH CHỜ -->
+        <section id="lobby">
+
+            <div class="hero">
+                <p class="subtitle">CLASSIC STRATEGY · ONLINE</p>
+
+                <h1>
+                    Một bàn cờ.<br>
+                    <span>Hai bộ óc.</span>
+                </h1>
+
+                <p class="description">
+                    Thách đấu bạn bè trong những ván cờ
+                    Caro cân não.
+                </p>
+            </div>
+
+            <div class="card">
+
+                <h2>Vào trận thôi!</h2>
+
+                <label>Tên người chơi</label>
+
+                <input
+                    id="playerName"
+                    placeholder="Nhập tên của bạn..."
+                    maxlength="18"
+                >
+
+                <button id="createBtn" class="primary">
+                    + Tạo phòng mới
+                </button>
+
+                <div class="divider">
+                    HOẶC THAM GIA PHÒNG
+                </div>
+
+                <div class="join">
+                    <input
+                        id="roomCodeInput"
+                        placeholder="MÃ PHÒNG"
+                        maxlength="6"
+                    >
+
+                    <button id="joinBtn">
+                        Tham gia →
+                    </button>
+                </div>
+
+                <p id="lobbyMessage"></p>
+
+            </div>
+
+        </section>
+
+        <!-- GIAO DIỆN GAME -->
+        <section id="game" class="hidden">
+
+            <button id="backBtn" class="back">
+                ← Sảnh chờ
+            </button>
+
+            <div class="room">
+                PHÒNG:
+                <strong id="roomCodeLabel"></strong>
+
+                <button id="copyCodeBtn">▢</button>
+            </div>
+
+            <h2 class="game-title">
+                Trận đấu đối kháng
+            </h2>
+
+            <div class="players">
+
+                <div id="playerX" class="player active">
+                    <span class="symbol x">X</span>
+
+                    <div>
+                        <small>QUÂN X</small>
+                        <strong id="nameX">Bạn</strong>
+                        <em id="youX"></em>
+                    </div>
+                </div>
+
+                <div class="vs">VS</div>
+
+                <div id="playerO" class="player">
+                    <span class="symbol o">O</span>
+
+                    <div>
+                        <small>QUÂN O</small>
+                        <strong id="nameO">Đang chờ...</strong>
+                        <em id="youO"></em>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="status">
+                <span id="statusIcon">✦</span>
+                <span id="statusText">
+                    Đang chờ người chơi thứ hai...
+                </span>
+            </div>
+
+            <div class="board-wrap">
+                <div id="board" class="board"></div>
+            </div>
+
+            <div class="actions">
+                <button id="restartBtn" class="primary" disabled>
+                    ↻ Chơi ván mới
+                </button>
+            </div>
+
+            <p id="gameMessage"></p>
+
+        </section>
+
+    </main>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="app.js"></script>
+
+</body>
+</html>
