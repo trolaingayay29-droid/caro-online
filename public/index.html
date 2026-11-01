@@ -69,14 +69,12 @@
 
                 <div class="form-group">
                     <label for="botDifficulty">Độ khó</label>
-
                     <div class="difficulty-select-wrapper" id="difficultyWrapper">
                         <select id="botDifficulty" class="difficulty-select">
                             <option value="easy">Dễ - Máy đánh ngẫu nhiên</option>
                             <option value="medium" selected>Trung bình - Biết chặn</option>
                             <option value="hard">Khó - Máy ưu tiên chiến thuật</option>
                         </select>
-
                         <span class="difficulty-arrow"></span>
                     </div>
                 </div>
@@ -107,26 +105,42 @@
         </section>
 
         <section id="game" class="game hidden">
+
             <!-- MÀN HÌNH CHỜ VÀ ĐẾM NGƯỢC -->
             <div id="countdownOverlay" class="countdown-overlay hidden">
                 <div class="countdown-box">
+
                     <div class="countdown-icon">🎮</div>
-                    <h2 id="countdownTitle">Đang chờ đối phương...</h2>
+
+                    <h2 id="countdownTitle">
+                        Đang chờ đối phương...
+                    </h2>
+
                     <p id="countdownDescription">
                         Khi có đủ 2 người chơi, trận đấu sẽ bắt đầu
                     </p>
+
+                    <!-- ĐỒNG HỒ CÁT XOAY -->
+                    <div class="hourglass-spin" aria-hidden="true">⏳</div>
+
+                    <!-- GIỮ RIÊNG PHẦN TỬ ĐẾM NGƯỢC CHO JAVASCRIPT -->
                     <div id="countdownNumber" class="countdown-number"></div>
+
                 </div>
             </div>
 
+            <!-- THANH TRÊN CÙNG -->
             <div class="game-topbar">
                 <button id="backBtn" class="back secondary" type="button">
                     ← Sảnh chờ
                 </button>
 
+                <!-- MÃ PHÒNG VÀ NÚT SAO CHÉP -->
                 <div class="room">
                     <span>MÃ PHÒNG</span>
+
                     <strong id="roomCodeLabel">------</strong>
+
                     <button
                         id="copyCodeBtn"
                         class="copy-btn"
@@ -142,6 +156,7 @@
                 <h2>Đối đầu nào!</h2>
             </div>
 
+            <!-- THÔNG TIN NGƯỜI CHƠI -->
             <div class="players">
                 <div id="playerX" class="player active">
                     <span class="symbol x">X</span>
@@ -166,11 +181,13 @@
                 </div>
             </div>
 
+            <!-- TRẠNG THÁI TRẬN ĐẤU -->
             <div class="status" aria-live="polite">
                 <span class="status-spark">✦</span>
                 <span id="statusText">Đang chờ người chơi thứ hai...</span>
             </div>
 
+            <!-- BÀN CỜ -->
             <div class="board-area">
                 <div class="board-shell">
                     <div
@@ -182,6 +199,7 @@
                 </div>
             </div>
 
+            <!-- NÚT ĐIỀU KHIỂN -->
             <div class="actions">
                 <button id="restartBtn" class="primary" type="button" disabled>
                     ↻ Chơi ván mới
