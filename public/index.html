@@ -4,26 +4,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+    <meta name="theme-color" content="#090d18">
+    <meta name="description" content="CARO.ONLINE - Chơi cờ Caro trực tuyến cùng bạn bè">
     <title>CARO.ONLINE</title>
-
     <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-
     <header class="header">
-        <h2>✕ CARO<span>.ONLINE</span></h2>
-        <div class="online">● MULTIPLAYER</div>
+        <a class="brand" href="#" aria-label="CARO.ONLINE">
+            <span class="brand-mark">✕</span>
+            <span>CARO<span class="brand-accent">.ONLINE</span></span>
+        </a>
+
+        <div class="online">
+            <span class="online-dot"></span>
+            MULTIPLAYER
+        </div>
     </header>
 
-    <main>
+    <main class="container">
 
         <!-- SẢNH CHỜ -->
-        <section id="lobby">
+        <section id="lobby" class="lobby">
 
             <div class="hero">
-                <p class="subtitle">CLASSIC STRATEGY · ONLINE</p>
+                <p class="eyebrow">CLASSIC STRATEGY · ONLINE</p>
 
                 <h1>
                     Một bàn cờ.<br>
@@ -31,77 +36,118 @@
                 </h1>
 
                 <p class="description">
-                    Thách đấu bạn bè trong những ván cờ
-                    Caro cân não.
+                    Thách đấu bạn bè trong những ván cờ Caro cân não.
+                    Tạo phòng riêng hoặc nhập mã phòng để bắt đầu.
                 </p>
+
+                <div class="hero-points">
+                    <span>✦ Chơi cùng bạn bè</span>
+                    <span>✦ Miễn phí</span>
+                    <span>✦ Trực tuyến</span>
+                </div>
             </div>
 
-            <div class="card">
+            <div class="card lobby-card">
+                <div class="card-heading">
+                    <span class="card-icon">♟</span>
 
-                <h2>Vào trận thôi!</h2>
+                    <div>
+                        <p class="eyebrow">SẴN SÀNG CHƯA?</p>
+                        <h2>Vào trận thôi!</h2>
+                        <p class="card-description">
+                            Nhập tên và chọn cách tham gia.
+                        </p>
+                    </div>
+                </div>
 
-                <label>Tên người chơi</label>
+                <div class="form-group">
+                    <label for="playerName">Tên người chơi</label>
+                    <input
+                        id="playerName"
+                        type="text"
+                        placeholder="Nhập tên của bạn..."
+                        maxlength="18"
+                        autocomplete="nickname"
+                    >
+                </div>
 
-                <input
-                    id="playerName"
-                    placeholder="Nhập tên của bạn..."
-                    maxlength="18"
+                <button
+                    id="createBtn"
+                    class="primary full-width"
+                    type="button"
                 >
-
-                <button id="createBtn" class="primary">
-                    + Tạo phòng mới
+                    ＋ Tạo phòng mới
                 </button>
 
                 <div class="divider">
-                    HOẶC THAM GIA PHÒNG
+                    <span>HOẶC THAM GIA PHÒNG</span>
                 </div>
 
                 <div class="join">
                     <input
                         id="roomCodeInput"
-                        placeholder="MÃ PHÒNG"
+                        type="text"
+                        placeholder="NHẬP MÃ PHÒNG"
                         maxlength="6"
+                        autocomplete="off"
                     >
 
-                    <button id="joinBtn">
+                    <button
+                        id="joinBtn"
+                        class="secondary"
+                        type="button"
+                    >
                         Tham gia →
                     </button>
                 </div>
 
-                <p id="lobbyMessage"></p>
-
+                <p id="lobbyMessage" class="message" role="status"></p>
             </div>
-
         </section>
 
-        <!-- GIAO DIỆN GAME -->
-        <section id="game" class="hidden">
 
-            <button id="backBtn" class="back">
-                ← Sảnh chờ
-            </button>
+        <!-- KHU VỰC TRẬN ĐẤU -->
+        <section id="game" class="game hidden">
 
-            <div class="room">
-                PHÒNG:
-                <strong id="roomCodeLabel"></strong>
+            <div class="game-topbar">
+                <button id="backBtn" class="back secondary" type="button">
+                    ← Sảnh chờ
+                </button>
 
-                <button id="copyCodeBtn">▢</button>
+                <div class="room">
+                    <span>MÃ PHÒNG</span>
+                    <strong id="roomCodeLabel">------</strong>
+
+                    <button
+                        id="copyCodeBtn"
+                        class="copy-btn"
+                        type="button"
+                        aria-label="Sao chép mã phòng"
+                        title="Sao chép mã phòng"
+                    >
+                        ▢
+                    </button>
+                </div>
             </div>
 
-            <h2 class="game-title">
-                Trận đấu đối kháng
-            </h2>
+            <div class="game-heading">
+                <p class="eyebrow">TRẬN ĐẤU TRỰC TUYẾN</p>
+                <h2>Đối đầu nào!</h2>
+            </div>
 
+            <!-- THÔNG TIN NGƯỜI CHƠI -->
             <div class="players">
 
                 <div id="playerX" class="player active">
                     <span class="symbol x">X</span>
 
-                    <div>
+                    <div class="player-info">
                         <small>QUÂN X</small>
-                        <strong id="nameX">Bạn</strong>
+                        <strong id="nameX">Đang chờ...</strong>
                         <em id="youX"></em>
                     </div>
+
+                    <span class="turn-indicator"></span>
                 </div>
 
                 <div class="vs">VS</div>
@@ -109,42 +155,57 @@
                 <div id="playerO" class="player">
                     <span class="symbol o">O</span>
 
-                    <div>
+                    <div class="player-info">
                         <small>QUÂN O</small>
                         <strong id="nameO">Đang chờ...</strong>
                         <em id="youO"></em>
                     </div>
+
+                    <span class="turn-indicator"></span>
                 </div>
 
             </div>
 
-            <div class="status">
-                <span id="statusIcon">✦</span>
+            <!-- TRẠNG THÁI VÁN ĐẤU -->
+            <div class="status" aria-live="polite">
+                <span class="status-spark">✦</span>
                 <span id="statusText">
                     Đang chờ người chơi thứ hai...
                 </span>
             </div>
 
-            <div class="board-wrap">
-                <div id="board" class="board"></div>
+            <!-- BÀN CỜ -->
+            <div class="board-area">
+                <div class="board-shell">
+                    <div
+                        class="board"
+                        id="board"
+                        role="group"
+                        aria-label="Bàn cờ Caro 15 nhân 15"
+                    ></div>
+                </div>
             </div>
 
+            <!-- NÚT ĐIỀU KHIỂN -->
             <div class="actions">
-                <button id="restartBtn" class="primary" disabled>
+                <button
+                    id="restartBtn"
+                    class="primary"
+                    type="button"
+                    disabled
+                >
                     ↻ Chơi ván mới
                 </button>
             </div>
 
-            <p id="gameMessage"></p>
+            <p id="gameMessage" class="message" role="status"></p>
 
         </section>
-
     </main>
 
-    <div id="toast" class="toast"></div>
+    <div id="toast" class="toast" role="status"></div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="app.js"></script>
-
 </body>
 </html>
