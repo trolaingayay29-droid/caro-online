@@ -69,11 +69,16 @@
 
                 <div class="form-group">
                     <label for="botDifficulty">Độ khó</label>
-                    <select id="botDifficulty" class="difficulty-select">
-                        <option value="easy">Dễ - Máy đánh ngẫu nhiên</option>
-                        <option value="medium" selected>Trung bình - Biết chặn</option>
-                        <option value="hard">Khó - Máy ưu tiên chiến thuật</option>
-                    </select>
+
+                    <div class="difficulty-select-wrapper" id="difficultyWrapper">
+                        <select id="botDifficulty" class="difficulty-select">
+                            <option value="easy">Dễ - Máy đánh ngẫu nhiên</option>
+                            <option value="medium" selected>Trung bình - Biết chặn</option>
+                            <option value="hard">Khó - Máy ưu tiên chiến thuật</option>
+                        </select>
+
+                        <span class="difficulty-arrow"></span>
+                    </div>
                 </div>
 
                 <button id="playBotBtn" class="bot-button full-width" type="button">
