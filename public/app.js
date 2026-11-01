@@ -1,8 +1,14 @@
 
-const socket = io();
+// ==========================================
+// CARO.ONLINE - MULTIPLAYER + CHƠI VỚI MÁY
+// ==========================================
+
+// Socket.IO không tải được thì chế độ chơi với máy vẫn hoạt động
+const socket = typeof io !== "undefined" ? io() : null;
 
 const $ = (id) => document.getElementById(id);
 
+// Các phần tử HTML
 const nameInput = $("playerName");
 const roomInput = $("roomCodeInput");
 
@@ -31,9 +37,11 @@ const nameOEl = $("nameO");
 const youXEl = $("youX");
 const youOEl = $("youO");
 
+// Cấu hình
 const SIZE = 15;
 const WIN_LENGTH = 5;
 
+// Trạng thái game
 let mySymbol = null;
 let currentRoom = null;
 let currentState = null;
@@ -42,20 +50,32 @@ let toastTimer = null;
 let botMode = false;
 let botThinking = false;
 let botDifficulty = "medium";
+let botTimer = null;
 
-// HIỂN THỊ THÔNG BÁO
+// ==========================================
+// THÔNG BÁO
+// ==========================================
+
 function showToast(message) {
+    if (!toastEl) return;
+
     toastEl.textContent = message;
     toastEl.classList.add("show");
 
     clearTimeout(toastTimer);
+
     toastTimer = setTimeout(() => {
         toastEl.classList.remove("show");
     }, 2200);
 }
 
+// ==========================================
 // TẠO BÀN CỜ
+// ==========================================
+
 function createBoard() {
+    if (!boardEl) return;
+
     boardEl.innerHTML = "";
 
     const fragment = document.createDocumentFragment();
@@ -67,9 +87,14 @@ function createBoard() {
             cell.type = "button";
             cell.className = "cell";
             cell.disabled = true;
+
             cell.dataset.row = r;
             cell.dataset.col = c;
-            cell.setAttribute("aria-label", `Hàng ${r + 1}, cột ${c + 1}`);
+
+            cell.setAttribute(
+                "aria-label",
+                `Hàng ${r + 1}, cột ${c + 1}`
+            );
 
             cell.addEventListener("click", () => {
                 handleCellClick(r, c);
@@ -84,8 +109,13 @@ function createBoard() {
 
 createBoard();
 
+// ==========================================
 // HIỂN THỊ BÀN CỜ
+// ==========================================
+
 function renderBoard(state) {
+    if (!state || !boardEl) return;
+
     const winning = new Set(
         (state.winningCells || []).map(
             ([r, c]) => `${r},${c}`
@@ -95,6 +125,7 @@ function renderBoard(state) {
     [...boardEl.children].forEach((cell, index) => {
         const r = Math.floor(index / SIZE);
         const c = index % SIZE;
+
         const value = state.board[r][c];
 
         let stone = cell.querySelector(".stone");
@@ -120,13 +151,18 @@ function renderBoard(state) {
         cell.disabled =
             Boolean(value) ||
             state.status !== "playing" ||
-            (botMode
-                ? state.turn !== "X" || botThinking
-                : state.turn !== mySymbol);
+            (
+                botMode
+                    ? state.turn !== "X" || botThinking
+                    : state.turn !== mySymbol
+            );
     });
 }
 
-// HIỂN THỊ PHÒNG ONLINE
+// ==========================================
+// HIỂN THỊ GAME ONLINE
+// ==========================================
+
 function showGame(data) {
     botMode = false;
     botThinking = false;
@@ -145,13 +181,22 @@ function showGame(data) {
     showToast(`Đã vào phòng ${currentRoom}`);
 }
 
-// TẠO PHÒNG
+// ==========================================
+// TẠO PHÒNG ONLINE
+// ==========================================
+
 createBtn.addEventListener("click", () => {
     const name = nameInput.value.trim();
 
     if (!name) {
         messageEl.textContent = "Ông nhập tên người chơi trước nhé!";
         nameInput.focus();
+        return;
+    }
+
+    if (!socket) {
+        messageEl.textContent =
+            "Không thể kết nối máy chủ. Ông thử tải lại trang nhé!";
         return;
     }
 
@@ -170,7 +215,10 @@ createBtn.addEventListener("click", () => {
     });
 });
 
-// THAM GIA PHÒNG
+// ==========================================
+// THAM GIA PHÒNG ONLINE
+// ==========================================
+
 joinBtn.addEventListener("click", () => {
     const name = nameInput.value.trim();
     const code = roomInput.value.trim().toUpperCase();
@@ -184,6 +232,12 @@ joinBtn.addEventListener("click", () => {
     if (!code) {
         messageEl.textContent = "Ông nhập mã phòng nhé!";
         roomInput.focus();
+        return;
+    }
+
+    if (!socket) {
+        messageEl.textContent =
+            "Không thể kết nối máy chủ. Ông thử tải lại trang nhé!";
         return;
     }
 
@@ -202,7 +256,10 @@ joinBtn.addEventListener("click", () => {
     });
 });
 
+// ==========================================
 // CẬP NHẬT NGƯỜI CHƠI
+// ==========================================
+
 function updatePlayers(players) {
     const playerX = players.find(p => p.symbol === "X");
     const playerO = players.find(p => p.symbol === "O");
@@ -210,11 +267,17 @@ function updatePlayers(players) {
     nameXEl.textContent = playerX?.name || "Đang chờ...";
     nameOEl.textContent = playerO?.name || "Đang chờ...";
 
-    youXEl.textContent = playerX?.symbol === mySymbol ? "BẠN" : "";
-    youOEl.textContent = playerO?.symbol === mySymbol ? "BẠN" : "";
+    youXEl.textContent =
+        playerX?.symbol === mySymbol ? "BẠN" : "";
+
+    youOEl.textContent =
+        playerO?.symbol === mySymbol ? "BẠN" : "";
 }
 
+// ==========================================
 // CẬP NHẬT TRẠNG THÁI
+// ==========================================
+
 function updateStatus(state) {
     playerXEl.classList.toggle(
         "active",
@@ -228,7 +291,9 @@ function updateStatus(state) {
 
     if (state.status === "waiting") {
         statusEl.textContent = "Đang chờ người chơi thứ hai...";
-    } else if (state.status === "playing") {
+    }
+
+    else if (state.status === "playing") {
         if (botMode) {
             statusEl.textContent = botThinking
                 ? "🤖 Máy đang suy nghĩ..."
@@ -240,36 +305,53 @@ function updateStatus(state) {
                 ? "Đến lượt ông! Hãy chọn một ô."
                 : `Đang chờ quân ${state.turn} đánh...`;
         }
-    } else if (state.status === "finished") {
-        statusEl.textContent = state.winner === mySymbol || (botMode && state.winner === "X")
-            ? "🎉 Ông đã chiến thắng!"
-            : botMode
-                ? "🤖 Máy đã chiến thắng!"
+    }
+
+    else if (state.status === "finished") {
+        if (botMode) {
+            statusEl.textContent = state.winner === "X"
+                ? "🎉 Ông đã chiến thắng!"
+                : "🤖 Máy đã chiến thắng!";
+        } else {
+            statusEl.textContent = state.winner === mySymbol
+                ? "🎉 Ông đã chiến thắng!"
                 : `Quân ${state.winner} đã chiến thắng!`;
+        }
 
         gameMessageEl.textContent = "Ván đấu đã kết thúc.";
-    } else if (state.status === "draw") {
+    }
+
+    else if (state.status === "draw") {
         statusEl.textContent = "Ván đấu hòa!";
         gameMessageEl.textContent = "Hai bên hòa nhau.";
     }
 
     restartBtn.disabled = botMode
         ? false
-        : state.status === "waiting" || state.players.length < 2;
+        : state.status === "waiting" ||
+          (state.players || []).length < 2;
 }
 
+// ==========================================
 // NHẬN TRẠNG THÁI ONLINE TỪ SERVER
-socket.on("gameState", (state) => {
-    if (botMode) return;
+// ==========================================
 
-    currentState = state;
+if (socket) {
+    socket.on("gameState", (state) => {
+        if (botMode) return;
 
-    updatePlayers(state.players || []);
-    updateStatus(state);
-    renderBoard(state);
-});
+        currentState = state;
 
+        updatePlayers(state.players || []);
+        updateStatus(state);
+        renderBoard(state);
+    });
+}
+
+// ==========================================
 // KIỂM TRA THẮNG
+// ==========================================
+
 function checkWinner(board, row, col, symbol) {
     const directions = [
         [1, 0],
@@ -277,8 +359,6 @@ function checkWinner(board, row, col, symbol) {
         [1, 1],
         [1, -1]
     ];
-
-    const winningCells = [[row, col]];
 
     for (const [dr, dc] of directions) {
         const line = [[row, col]];
@@ -293,6 +373,7 @@ function checkWinner(board, row, col, symbol) {
                 board[r][c] === symbol
             ) {
                 line.push([r, c]);
+
                 r += dr * sign;
                 c += dc * sign;
             }
@@ -306,32 +387,46 @@ function checkWinner(board, row, col, symbol) {
     return null;
 }
 
-// TẠO TRẠNG THÁI GAME MÁY
+// ==========================================
+// BẮT ĐẦU CHƠI VỚI MÁY
+// ==========================================
+
 function startBotGame() {
     const name = nameInput.value.trim();
 
     if (!name) {
-        messageEl.textContent = "Ông nhập tên người chơi trước nhé!";
+        messageEl.textContent =
+            "Ông nhập tên người chơi trước nhé!";
+
         nameInput.focus();
         return;
     }
 
+    // Hủy lượt máy cũ nếu đang có
+    clearTimeout(botTimer);
+
     botMode = true;
     botThinking = false;
+
     botDifficulty = botDifficultyEl?.value || "medium";
 
     currentRoom = null;
     mySymbol = "X";
+
+    gameMessageEl.textContent = "";
+    messageEl.textContent = "";
 
     currentState = {
         board: Array.from(
             { length: SIZE },
             () => Array(SIZE).fill(null)
         ),
+
         players: [
             { name, symbol: "X" },
             { name: "Máy tính 🤖", symbol: "O" }
         ],
+
         turn: "X",
         status: "playing",
         winner: null,
@@ -350,17 +445,28 @@ function startBotGame() {
     showToast(`Đang chơi với máy - ${getDifficultyName()}`);
 }
 
+// TÊN ĐỘ KHÓ
+
 function getDifficultyName() {
     if (botDifficulty === "easy") return "Dễ";
     if (botDifficulty === "hard") return "Khó";
+
     return "Trung bình";
 }
 
+// GẮN SỰ KIỆN NÚT CHƠI VỚI MÁY
+// Chỉ đăng ký đúng một lần
+
 if (playBotBtn) {
     playBotBtn.addEventListener("click", startBotGame);
+} else {
+    console.error("Không tìm thấy nút playBotBtn trong HTML!");
 }
 
-// ĐÁNH CỜ
+// ==========================================
+// XỬ LÝ KHI BẤM VÀO Ô CỜ
+// ==========================================
+
 function handleCellClick(row, col) {
     if (!currentState) return;
 
@@ -369,7 +475,7 @@ function handleCellClick(row, col) {
         return;
     }
 
-    if (!currentRoom) return;
+    if (!currentRoom || !socket) return;
 
     socket.emit("makeMove", {
         code: currentRoom,
@@ -382,26 +488,37 @@ function handleCellClick(row, col) {
     });
 }
 
+// ==========================================
 // NGƯỜI CHƠI ĐÁNH TRONG CHẾ ĐỘ MÁY
+// ==========================================
+
 function makeBotGameMove(row, col) {
     if (
         !botMode ||
         botThinking ||
+        !currentState ||
         currentState.status !== "playing" ||
         currentState.turn !== "X" ||
         currentState.board[row][col]
-    ) return;
+    ) {
+        return;
+    }
 
     placeBotGameMove(row, col, "X");
 
     if (currentState.status !== "playing") return;
 
     botThinking = true;
+
     updateStatus(currentState);
     renderBoard(currentState);
 
-    setTimeout(() => {
-        if (!botMode || currentState.status !== "playing") return;
+    botTimer = setTimeout(() => {
+        if (!botMode || !currentState ||
+            currentState.status !== "playing") {
+            botThinking = false;
+            return;
+        }
 
         const move = chooseBotMove(currentState.board);
 
@@ -413,10 +530,14 @@ function makeBotGameMove(row, col) {
 
         updateStatus(currentState);
         renderBoard(currentState);
+
     }, botDifficulty === "easy" ? 350 : 650);
 }
 
+// ==========================================
 // ĐẶT QUÂN CHO GAME MÁY
+// ==========================================
+
 function placeBotGameMove(row, col, symbol) {
     const board = currentState.board;
 
@@ -424,15 +545,24 @@ function placeBotGameMove(row, col, symbol) {
 
     board[row][col] = symbol;
 
-    const winningCells = checkWinner(board, row, col, symbol);
+    const winningCells = checkWinner(
+        board,
+        row,
+        col,
+        symbol
+    );
 
     if (winningCells) {
         currentState.status = "finished";
         currentState.winner = symbol;
         currentState.winningCells = winningCells;
-    } else if (board.every(line => line.every(Boolean))) {
+    }
+
+    else if (board.every(line => line.every(Boolean))) {
         currentState.status = "draw";
-    } else {
+    }
+
+    else {
         currentState.turn = symbol === "X" ? "O" : "X";
     }
 
@@ -440,7 +570,10 @@ function placeBotGameMove(row, col, symbol) {
     renderBoard(currentState);
 }
 
-// TÌM Ô TRỐNG GẦN QUÂN ĐÃ ĐÁNH
+// ==========================================
+// TÌM CÁC Ô CÓ THỂ ĐÁNH
+// ==========================================
+
 function getCandidateMoves(board) {
     const moves = [];
     const seen = new Set();
@@ -464,7 +597,9 @@ function getCandidateMoves(board) {
                         nr < 0 || nr >= SIZE ||
                         nc < 0 || nc >= SIZE ||
                         board[nr][nc]
-                    ) continue;
+                    ) {
+                        continue;
+                    }
 
                     const key = `${nr},${nc}`;
 
@@ -480,16 +615,37 @@ function getCandidateMoves(board) {
     return moves;
 }
 
-// KIỂM TRA NẾU ĐÁNH VÀO Ô NÀY THÌ CÓ THẮNG KHÔNG
+// ==========================================
+// KIỂM TRA NƯỚC ĐI CÓ THẮNG NGAY KHÔNG
+// ==========================================
+
 function isWinningMove(board, row, col, symbol) {
     board[row][col] = symbol;
-    const result = checkWinner(board, row, col, symbol);
+
+    const result = checkWinner(
+        board,
+        row,
+        col,
+        symbol
+    );
+
     board[row][col] = null;
+
     return Boolean(result);
 }
 
-// ĐẾM ĐỘ NGUY HIỂM CỦA MỘT ĐƯỜNG
-function evaluateDirection(board, row, col, symbol, dr, dc) {
+// ==========================================
+// ĐÁNH GIÁ MỘT ĐƯỜNG CỜ
+// ==========================================
+
+function evaluateDirection(
+    board,
+    row,
+    col,
+    symbol,
+    dr,
+    dc
+) {
     let count = 1;
     let openEnds = 0;
 
@@ -503,6 +659,7 @@ function evaluateDirection(board, row, col, symbol, dr, dc) {
             board[r][c] === symbol
         ) {
             count++;
+
             r += dr * sign;
             c += dc * sign;
         }
@@ -527,7 +684,10 @@ function evaluateDirection(board, row, col, symbol, dr, dc) {
     return count * 5;
 }
 
-// CHẤM ĐIỂM MỘT NƯỚC ĐI
+// ==========================================
+// CHẤM ĐIỂM NƯỚC ĐI
+// ==========================================
+
 function scoreMove(board, row, col, symbol) {
     const directions = [
         [1, 0],
@@ -542,7 +702,12 @@ function scoreMove(board, row, col, symbol) {
 
     for (const [dr, dc] of directions) {
         score += evaluateDirection(
-            board, row, col, symbol, dr, dc
+            board,
+            row,
+            col,
+            symbol,
+            dr,
+            dc
         );
     }
 
@@ -551,40 +716,68 @@ function scoreMove(board, row, col, symbol) {
     return score;
 }
 
+// ==========================================
 // AI CHỌN NƯỚC ĐI
+// ==========================================
+
 function chooseBotMove(board) {
     const candidates = getCandidateMoves(board);
 
     if (!candidates.length) return null;
 
-    // DỄ: CHỌN NGẪU NHIÊN
+    // MỨC DỄ: ĐÁNH NGẪU NHIÊN
+
     if (botDifficulty === "easy") {
         return candidates[
             Math.floor(Math.random() * candidates.length)
         ];
     }
 
-    // ƯU TIÊN THẮNG NGAY
+    // ƯU TIÊN ĐÁNH THẮNG NGAY
+
     for (const move of candidates) {
-        if (isWinningMove(board, move.row, move.col, "O")) {
+        if (
+            isWinningMove(
+                board,
+                move.row,
+                move.col,
+                "O"
+            )
+        ) {
             return move;
         }
     }
 
-    // ƯU TIÊN CHẶN NGƯỜI CHƠI THẮNG NGAY
+    // ƯU TIÊN CHẶN NGƯỜI CHƠI THẮNG
+
     for (const move of candidates) {
-        if (isWinningMove(board, move.row, move.col, "X")) {
+        if (
+            isWinningMove(
+                board,
+                move.row,
+                move.col,
+                "X"
+            )
+        ) {
             return move;
         }
     }
+
+    // CHẤM ĐIỂM CÁC NƯỚC ĐI
 
     const scoredMoves = candidates.map(move => {
         const attack = scoreMove(
-            board, move.row, move.col, "O"
+            board,
+            move.row,
+            move.col,
+            "O"
         );
 
         const defense = scoreMove(
-            board, move.row, move.col, "X"
+            board,
+            move.row,
+            move.col,
+            "X"
         );
 
         const centerBonus =
@@ -593,38 +786,58 @@ function chooseBotMove(board) {
                 Math.abs(move.col - 7)
             );
 
-        let score = attack * 1.15 + defense * 1.05 + centerBonus;
+        let score =
+            attack * 1.15 +
+            defense * 1.05 +
+            centerBonus;
 
         if (botDifficulty === "hard") {
-            score = attack * 1.3 + defense * 1.2 + centerBonus;
+            score =
+                attack * 1.3 +
+                defense * 1.2 +
+                centerBonus;
         }
 
-        return { ...move, score };
+        return {
+            ...move,
+            score
+        };
     });
 
     scoredMoves.sort((a, b) => b.score - a.score);
 
-    // TRUNG BÌNH: ĐÔI KHI CHỌN NƯỚC ĐI KHÁC
-    if (botDifficulty === "medium" && Math.random() < 0.18) {
-        const topMoves = scoredMoves.slice(0, Math.min(3, scoredMoves.length));
+    // TRUNG BÌNH: ĐÔI KHI CHỌN NƯỚC KHÁC
+
+    if (
+        botDifficulty === "medium" &&
+        Math.random() < 0.18
+    ) {
+        const topMoves = scoredMoves.slice(
+            0,
+            Math.min(3, scoredMoves.length)
+        );
 
         return topMoves[
             Math.floor(Math.random() * topMoves.length)
         ];
     }
 
-    // KHÓ: CHỌN NƯỚC CÓ ĐIỂM CAO NHẤT
+    // KHÓ: CHỌN NƯỚC ĐI CÓ ĐIỂM CAO NHẤT
+
     return scoredMoves[0];
 }
 
-// CHƠI LẠI
+// ==========================================
+// CHƠI VÁN MỚI
+// ==========================================
+
 restartBtn.addEventListener("click", () => {
     if (botMode) {
         startBotGame();
         return;
     }
 
-    if (!currentRoom) return;
+    if (!currentRoom || !socket) return;
 
     restartBtn.disabled = true;
 
@@ -632,12 +845,17 @@ restartBtn.addEventListener("click", () => {
         code: currentRoom
     }, (result) => {
         if (!result || !result.ok) {
-            showToast(result?.message || "Không thể chơi lại!");
+            showToast(
+                result?.message || "Không thể chơi lại!"
+            );
         }
     });
 });
 
+// ==========================================
 // SAO CHÉP MÃ PHÒNG
+// ==========================================
+
 copyCodeBtn.addEventListener("click", async () => {
     if (!currentRoom) return;
 
@@ -649,9 +867,14 @@ copyCodeBtn.addEventListener("click", async () => {
     }
 });
 
+// ==========================================
 // RỜI PHÒNG / THOÁT GAME
+// ==========================================
+
 function leaveCurrentRoom() {
-    if (currentRoom) {
+    clearTimeout(botTimer);
+
+    if (currentRoom && socket) {
         socket.emit("leaveRoom", {
             code: currentRoom
         });
@@ -675,28 +898,54 @@ function leaveCurrentRoom() {
 
 backBtn.addEventListener("click", leaveCurrentRoom);
 
+// ==========================================
 // ĐỐI THỦ RỜI PHÒNG
-socket.on("opponentLeft", () => {
-    showToast("Đối thủ đã rời phòng!");
+// ==========================================
 
-    if (currentRoom) {
-        statusEl.textContent =
-            "Đối thủ đã rời phòng. Đang chờ người mới...";
-    }
-});
+if (socket) {
+    socket.on("opponentLeft", () => {
+        showToast("Đối thủ đã rời phòng!");
 
-// KẾT NỐI
-socket.on("connect", () => {
-    console.log("Đã kết nối máy chủ:", socket.id);
-});
+        if (currentRoom) {
+            statusEl.textContent =
+                "Đối thủ đã rời phòng. Đang chờ người mới...";
+        }
+    });
 
-socket.on("disconnect", () => {
-    if (!botMode) {
-        statusEl.textContent = "Mất kết nối máy chủ...";
-    }
-});
+    // KẾT NỐI
 
-socket.on("connect_error", () => {
-    messageEl.textContent =
-        "Không thể kết nối máy chủ. Thử tải lại trang nhé!";
-});
+    socket.on("connect", () => {
+        console.log(
+            "Đã kết nối máy chủ:",
+            socket.id
+        );
+    });
+
+    socket.on("disconnect", () => {
+        if (!botMode) {
+            statusEl.textContent =
+                "Mất kết nối máy chủ...";
+        }
+    });
+
+    socket.on("connect_error", () => {
+        messageEl.textContent =
+            "Không thể kết nối máy chủ. Thử tải lại trang nhé!";
+    });
+} else {
+    console.warn(
+        "Socket.IO chưa tải. Chế độ chơi với máy vẫn sử dụng được."
+    );
+}
+
+// ==========================================
+// KIỂM TRA APP ĐÃ TẢI
+// ==========================================
+
+console.log("CARO.ONLINE: app.js đã tải thành công.");
+
+if (playBotBtn) {
+    console.log("Đã tìm thấy nút Chơi với máy.");
+} else {
+    console.error("Không tìm thấy nút Chơi với máy!");
+}
