@@ -979,45 +979,63 @@ h1, h2, h3, p {
 }
 
 
-/* ĐỒNG HỒ CÁT XOAY LIÊN TỤC */
+/* ========================================
+   ĐỒNG HỒ CÁT XOAY LIÊN TỤC
+======================================== */
+
 .hourglass-spin {
     display: flex;
-    justify-content: center;
     align-items: center;
-    margin: 25px auto 10px;
+    justify-content: center;
+
+    width: 110px;
+    height: 110px;
+    margin: 24px auto 12px;
+
     font-size: 76px;
-    width: 100px;
-    height: 100px;
-    animation: hourglassRotate 2s ease-in-out infinite;
     transform-origin: center;
-    filter: drop-shadow(0 0 14px rgba(101, 230, 255, .65));
+
+    animation: hourglassRotate 2s ease-in-out infinite;
+
+    filter:
+        drop-shadow(0 0 10px rgba(101, 230, 255, .5))
+        drop-shadow(0 0 22px rgba(101, 230, 255, .25));
 }
 
 @keyframes hourglassRotate {
     0% {
         transform: rotate(0deg) scale(1);
     }
+
     40% {
         transform: rotate(180deg) scale(1.12);
     }
+
     50% {
         transform: rotate(180deg) scale(1.12);
     }
+
     90% {
         transform: rotate(360deg) scale(1);
     }
+
     100% {
         transform: rotate(360deg) scale(1);
     }
 }
 
-/* MÃ PHÒNG */
+/* ========================================
+   LÀM NỔI BẬT MÃ PHÒNG
+======================================== */
+
 .room {
+    position: relative;
+    z-index: 10001;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
     flex-wrap: wrap;
+    gap: 10px;
 }
 
 .room strong {
@@ -1029,9 +1047,39 @@ h1, h2, h3, p {
 
 .copy-btn {
     cursor: pointer;
-    transition: .2s ease;
+    transition: transform .2s ease, background .2s ease;
 }
 
 .copy-btn:hover {
-    transform: scale(1.1);
+    transform: scale(1.12);
+    background: #304969;
+}
+
+/* Giữ thanh mã phòng nổi phía trên màn hình chờ */
+.game-topbar {
+    position: relative;
+    z-index: 10001;
+}
+
+/* ========================================
+   ĐIỆN THOẠI
+======================================== */
+
+@media (max-width: 480px) {
+    .hourglass-spin {
+        width: 90px;
+        height: 90px;
+        font-size: 65px;
+    }
+
+    .room strong {
+        font-size: 19px;
+    }
+}
+
+/* Tôn trọng cài đặt giảm chuyển động */
+@media (prefers-reduced-motion: reduce) {
+    .hourglass-spin {
+        animation-duration: 8s;
+    }
 }
