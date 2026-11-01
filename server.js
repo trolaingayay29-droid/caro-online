@@ -17,25 +17,37 @@ const io = new Server(server, {
 
 const PORT = process.env.PORT || 3000;
 const SIZE = 15;
+const WIN_LENGTH = 5;
 
 app.use(express.static(path.join(__dirname, "public")));
 
 const rooms = new Map();
 
+// ==========================================
+// CÁC HÀM CƠ BẢN
+// ==========================================
+
 function createCode() {
     let code;
+
     do {
         code = crypto.randomBytes(3).toString("hex").toUpperCase();
     } while (rooms.has(code));
+
     return code;
 }
 
 function newBoard() {
-    return Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
+    return Array.from(
+        { length: SIZE },
+        () => Array(SIZE).fill(null)
+    );
 }
 
 function cleanName(name) {
-    return String(name || "Người chơi").trim().slice(0, 18) || "Người chơi";
+    return String(name || "Người chơi")
+        .trim()
+        .slice(0, 18) || "Người chơi";
 }
 
 function publicPlayers(room) {
@@ -56,6 +68,16 @@ function sendState(room) {
         winningCells: room.winningCells
     });
 }
+
+function isBoardFull(board) {
+    return board.every(row =>
+        row.every(cell => cell !== null)
+    );
+}
+
+// ==========================================
+// KIỂM TRA THẮNG
+// ==========================================
 
 function checkWinner(board, row, col, symbol) {
     const directions = [
@@ -78,42 +100,80 @@ function checkWinner(board, row, col, symbol) {
                 board[r][c] === symbol
             ) {
                 cells.push([r, c]);
+
                 r += dr * sign;
                 c += dc * sign;
             }
         }
 
-        if (cells.length >= 5) return cells;
+        if (cells.length >= WIN_LENGTH) {
+            return cells;
+        }
     }
 
     return null;
 }
 
-function isBoardFull(board) {
-    return board.every(row => row.every(cell => cell !== null));
+// ==========================================
+// QUẢN LÝ ĐẾM NGƯỢC
+// ==========================================
+
+function clearRoomCountdown(room) {
+    if (!room) return;
+
+    if (room.countdownTimer) {
+        clearInterval(room.countdownTimer);
+        room.countdownTimer = null;
+    }
+
+    room.countdown = null;
 }
 
-// ==========================================
-// ĐẾM NGƯỢC ĐỒNG BỘ CHO HAI NGƯỜI
-// ==========================================
-
 function startRoomCountdown(room) {
-    if (!room || room.players.length < 2) return;
+    if (!room || room.players.length < 2) {
+        return;
+    }
 
-    clearInterval(room.countdownTimer);
+    // Hủy bộ đếm cũ nếu có
+    clearRoomCountdown(room);
+
+    // Reset bàn cờ khi bắt đầu một lượt đếm mới
+    room.board = newBoard();
+    room.turn = "X";
+    room.winner = null;
+    room.winningCells = [];
 
     room.status = "countdown";
-    room.turn = "X";
     room.countdown = 3;
 
+    // Báo trạng thái cho cả hai người
     sendState(room);
 
-    io.to(room.code).emit("countdown", { count: 3 });
+    // Gửi số 3
+    io.to(room.code).emit("countdown", {
+        count: 3
+    });
 
     room.countdownTimer = setInterval(() => {
-        if (!rooms.has(room.code) || room.players.length < 2) {
-            clearInterval(room.countdownTimer);
-            room.countdownTimer = null;
+        // Phòng không còn tồn tại
+        if (!rooms.has(room.code)) {
+            clearRoomCountdown(room);
+            return;
+        }
+
+        // Không đủ người chơi thì dừng
+        if (room.players.length < 2) {
+            clearRoomCountdown(room);
+
+            room.status = "waiting";
+            sendState(room);
+
+            return;
+        }
+
+        // Nếu trạng thái không còn là countdown thì dừng
+        if (room.status !== "countdown") {
+            clearRoomCountdown(room);
             return;
         }
 
@@ -123,29 +183,26 @@ function startRoomCountdown(room) {
             io.to(room.code).emit("countdown", {
                 count: room.countdown
             });
-        } else {
-            clearInterval(room.countdownTimer);
-            room.countdownTimer = null;
 
-            room.status = "playing";
-
-            io.to(room.code).emit("countdown", {
-                count: "BẮT ĐẦU!"
-            });
-
-            sendState(room);
-
-            setTimeout(() => {
-                if (rooms.has(room.code) && room.status === "playing") {
-                    io.to(room.code).emit("countdownEnd");
-                }
-            }, 800);
+            return;
         }
+
+        // KẾT THÚC ĐẾM NGƯỢC
+        clearRoomCountdown(room);
+
+        room.status = "playing";
+        room.turn = "X";
+
+        // Gửi trạng thái playing để mở bàn cờ
+        sendState(room);
+
+        // Hiện chữ BẮT ĐẦU trên cả hai màn hình
+        io.to(room.code).emit("countdownEnd");
     }, 1000);
 }
 
 // ==========================================
-// BOT
+// BOT: CHẤM ĐIỂM NƯỚC ĐI
 // ==========================================
 
 function scoreMove(board, row, col, symbol) {
@@ -172,6 +229,7 @@ function scoreMove(board, row, col, symbol) {
                 board[r][c] === symbol
             ) {
                 count++;
+
                 r += dr * sign;
                 c += dc * sign;
             }
@@ -185,18 +243,32 @@ function scoreMove(board, row, col, symbol) {
             }
         }
 
-        if (count >= 5) score += 100000;
-        else if (count === 4) score += openEnds === 2 ? 20000 : 10000;
-        else if (count === 3) score += openEnds === 2 ? 3000 : 500;
-        else if (count === 2) score += openEnds === 2 ? 300 : 50;
-        else score += 5;
+        if (count >= 5) {
+            score += 100000;
+        } else if (count === 4) {
+            score += openEnds === 2 ? 20000 : 10000;
+        } else if (count === 3) {
+            score += openEnds === 2 ? 3000 : 500;
+        } else if (count === 2) {
+            score += openEnds === 2 ? 300 : 50;
+        } else {
+            score += 5;
+        }
     }
 
     return score;
 }
 
+// ==========================================
+// BOT: TÌM NƯỚC ĐI
+// ==========================================
+
 function getBotMove(board) {
     const candidates = [];
+
+    const boardEmpty = board.every(row =>
+        row.every(cell => cell === null)
+    );
 
     for (let r = 0; r < SIZE; r++) {
         for (let c = 0; c < SIZE; c++) {
@@ -219,7 +291,7 @@ function getBotMove(board) {
                 }
             }
 
-            if (near || board.every(row => row.every(v => v === null))) {
+            if (near || boardEmpty) {
                 candidates.push([r, c]);
             }
         }
@@ -229,16 +301,35 @@ function getBotMove(board) {
     let bestScore = -Infinity;
 
     for (const [r, c] of candidates) {
+        // Tính điểm tấn công
         board[r][c] = "O";
-        const attack = scoreMove(board, r, c, "O");
 
+        const attack = scoreMove(
+            board,
+            r,
+            c,
+            "O"
+        );
+
+        // Tính điểm phòng thủ
         board[r][c] = "X";
-        const defense = scoreMove(board, r, c, "X");
+
+        const defense = scoreMove(
+            board,
+            r,
+            c,
+            "X"
+        );
 
         board[r][c] = null;
 
-        const centerBonus = 15 - Math.abs(7 - r) - Math.abs(7 - c);
-        const score = attack * 1.15 + defense + centerBonus;
+        const centerBonus =
+            15 - Math.abs(7 - r) - Math.abs(7 - c);
+
+        const score =
+            attack * 1.15 +
+            defense +
+            centerBonus;
 
         if (score > bestScore) {
             bestScore = score;
@@ -249,8 +340,17 @@ function getBotMove(board) {
     return bestMove;
 }
 
+// ==========================================
+// BOT: ĐÁNH CỜ
+// ==========================================
+
 function botMove(room) {
-    if (!room || !room.isBot || room.status !== "playing" || room.turn !== "O") {
+    if (
+        !room ||
+        !room.isBot ||
+        room.status !== "playing" ||
+        room.turn !== "O"
+    ) {
         return;
     }
 
@@ -263,9 +363,15 @@ function botMove(room) {
     }
 
     const [row, col] = move;
+
     room.board[row][col] = "O";
 
-    const winningCells = checkWinner(room.board, row, col, "O");
+    const winningCells = checkWinner(
+        room.board,
+        row,
+        col,
+        "O"
+    );
 
     if (winningCells) {
         room.status = "finished";
@@ -285,31 +391,45 @@ function botMove(room) {
 // ==========================================
 
 function leaveRoom(socket, code) {
-    code = String(code || "").trim().toUpperCase();
+    code = String(code || "")
+        .trim()
+        .toUpperCase();
 
     const room = rooms.get(code);
 
     if (!room) {
-        return { ok: false, message: "Phòng không tồn tại!" };
+        return {
+            ok: false,
+            message: "Phòng không tồn tại!"
+        };
     }
 
-    const playerExists = room.players.some(player => player.id === socket.id);
+    const playerExists = room.players.some(
+        player => player.id === socket.id
+    );
 
     if (!playerExists) {
-        return { ok: false, message: "Bạn không thuộc phòng này!" };
+        return {
+            ok: false,
+            message: "Bạn không thuộc phòng này!"
+        };
     }
 
-    clearInterval(room.countdownTimer);
-    room.countdownTimer = null;
+    // Hủy đếm ngược nếu đang chạy
+    clearRoomCountdown(room);
 
-    room.players = room.players.filter(player => player.id !== socket.id);
+    room.players = room.players.filter(
+        player => player.id !== socket.id
+    );
 
     socket.leave(room.code);
+
     socket.emit("roomLeft");
 
     if (room.players.length === 0) {
         rooms.delete(room.code);
     } else {
+        // Reset phòng để người còn lại chờ đối thủ mới
         room.board = newBoard();
         room.turn = "X";
         room.status = "waiting";
@@ -318,6 +438,7 @@ function leaveRoom(socket, code) {
         room.countdown = null;
 
         io.to(room.code).emit("opponentLeft");
+
         sendState(room);
     }
 
@@ -331,213 +452,340 @@ function leaveRoom(socket, code) {
 io.on("connection", socket => {
     console.log("Người chơi kết nối:", socket.id);
 
-    // TẠO PHÒNG
-    socket.on("createRoom", ({ name } = {}, callback = () => {}) => {
-        const code = createCode();
+    // --------------------------------------
+    // TẠO PHÒNG ONLINE
+    // --------------------------------------
 
-        const room = {
-            code,
-            board: newBoard(),
-            players: [{
-                id: socket.id,
-                symbol: "X",
-                name: cleanName(name)
-            }],
-            isBot: false,
-            turn: "X",
-            status: "waiting",
-            winner: null,
-            winningCells: [],
-            countdown: null,
-            countdownTimer: null
-        };
+    socket.on(
+        "createRoom",
+        ({ name } = {}, callback = () => {}) => {
+            const code = createCode();
 
-        rooms.set(code, room);
-        socket.join(code);
+            const room = {
+                code,
+                board: newBoard(),
 
-        callback({
-            ok: true,
-            code,
-            symbol: "X"
-        });
+                players: [{
+                    id: socket.id,
+                    symbol: "X",
+                    name: cleanName(name)
+                }],
 
-        sendState(room);
-    });
+                isBot: false,
+                turn: "X",
+                status: "waiting",
+                winner: null,
+                winningCells: [],
 
-    // TẠO PHÒNG CHƠI VỚI MÁY
-    socket.on("createBotRoom", ({ name } = {}, callback = () => {}) => {
-        const code = createCode();
+                countdown: null,
+                countdownTimer: null
+            };
 
-        const room = {
-            code,
-            board: newBoard(),
-            players: [
-                { id: socket.id, symbol: "X", name: cleanName(name) },
-                { id: "BOT", symbol: "O", name: "Máy tính" }
-            ],
-            isBot: true,
-            turn: "X",
-            status: "playing",
-            winner: null,
-            winningCells: [],
-            countdown: null,
-            countdownTimer: null
-        };
+            rooms.set(code, room);
 
-        rooms.set(code, room);
-        socket.join(code);
+            socket.join(code);
 
-        callback({
-            ok: true,
-            code,
-            symbol: "X"
-        });
+            callback({
+                ok: true,
+                code,
+                symbol: "X"
+            });
 
-        sendState(room);
-    });
-
-    // THAM GIA PHÒNG
-    socket.on("joinRoom", ({ code, name } = {}, callback = () => {}) => {
-        code = String(code || "").trim().toUpperCase();
-
-        const room = rooms.get(code);
-
-        if (!room) {
-            return callback({ ok: false, message: "Không tìm thấy phòng!" });
-        }
-
-        if (room.players.length >= 2 || room.isBot) {
-            return callback({ ok: false, message: "Phòng đã đủ người!" });
-        }
-
-        if (room.status !== "waiting") {
-            return callback({ ok: false, message: "Phòng không thể tham gia lúc này!" });
-        }
-
-        room.players.push({
-            id: socket.id,
-            symbol: "O",
-            name: cleanName(name)
-        });
-
-        socket.join(code);
-
-        callback({
-            ok: true,
-            code,
-            symbol: "O"
-        });
-
-        startRoomCountdown(room);
-    });
-
-    // ĐÁNH CỜ
-    socket.on("makeMove", ({ code, row, col } = {}, callback = () => {}) => {
-        code = String(code || "").trim().toUpperCase();
-
-        const room = rooms.get(code);
-
-        if (!room) {
-            return callback({ ok: false, message: "Phòng không tồn tại!" });
-        }
-
-        const player = room.players.find(p => p.id === socket.id);
-
-        if (!player) {
-            return callback({ ok: false, message: "Bạn không thuộc phòng này!" });
-        }
-
-        if (room.status !== "playing") {
-            return callback({ ok: false, message: "Ván chơi chưa sẵn sàng!" });
-        }
-
-        if (player.symbol !== room.turn) {
-            return callback({ ok: false, message: "Chưa đến lượt bạn!" });
-        }
-
-        if (
-            !Number.isInteger(row) ||
-            !Number.isInteger(col) ||
-            row < 0 || row >= SIZE ||
-            col < 0 || col >= SIZE
-        ) {
-            return callback({ ok: false, message: "Vị trí không hợp lệ!" });
-        }
-
-        if (room.board[row][col] !== null) {
-            return callback({ ok: false, message: "Ô này đã có quân!" });
-        }
-
-        room.board[row][col] = player.symbol;
-
-        const winningCells = checkWinner(room.board, row, col, player.symbol);
-
-        if (winningCells) {
-            room.status = "finished";
-            room.winner = player.symbol;
-            room.winningCells = winningCells;
-        } else if (isBoardFull(room.board)) {
-            room.status = "draw";
-        } else {
-            room.turn = player.symbol === "X" ? "O" : "X";
-        }
-
-        callback({ ok: true });
-        sendState(room);
-
-        if (room.isBot && room.status === "playing") {
-            setTimeout(() => botMove(room), 650);
-        }
-    });
-
-    // CHƠI LẠI
-    socket.on("restartGame", ({ code } = {}, callback = () => {}) => {
-        code = String(code || "").trim().toUpperCase();
-
-        const room = rooms.get(code);
-
-        if (!room) {
-            return callback({ ok: false, message: "Phòng không tồn tại!" });
-        }
-
-        if (!room.players.some(p => p.id === socket.id)) {
-            return callback({ ok: false, message: "Bạn không thuộc phòng này!" });
-        }
-
-        if (!room.isBot && room.players.length < 2) {
-            return callback({ ok: false, message: "Cần đủ 2 người chơi!" });
-        }
-
-        clearInterval(room.countdownTimer);
-        room.countdownTimer = null;
-
-        room.board = newBoard();
-        room.turn = "X";
-        room.winner = null;
-        room.winningCells = [];
-
-        callback({ ok: true });
-
-        if (room.isBot) {
-            room.status = "playing";
             sendState(room);
-        } else {
+        }
+    );
+
+    // --------------------------------------
+    // TẠO PHÒNG CHƠI VỚI MÁY
+    // --------------------------------------
+
+    socket.on(
+        "createBotRoom",
+        ({ name } = {}, callback = () => {}) => {
+            const code = createCode();
+
+            const room = {
+                code,
+                board: newBoard(),
+
+                players: [
+                    {
+                        id: socket.id,
+                        symbol: "X",
+                        name: cleanName(name)
+                    },
+                    {
+                        id: "BOT",
+                        symbol: "O",
+                        name: "Máy tính"
+                    }
+                ],
+
+                isBot: true,
+                turn: "X",
+                status: "playing",
+                winner: null,
+                winningCells: [],
+
+                countdown: null,
+                countdownTimer: null
+            };
+
+            rooms.set(code, room);
+
+            socket.join(code);
+
+            callback({
+                ok: true,
+                code,
+                symbol: "X"
+            });
+
+            sendState(room);
+        }
+    );
+
+    // --------------------------------------
+    // THAM GIA PHÒNG
+    // --------------------------------------
+
+    socket.on(
+        "joinRoom",
+        ({ code, name } = {}, callback = () => {}) => {
+            code = String(code || "")
+                .trim()
+                .toUpperCase();
+
+            const room = rooms.get(code);
+
+            if (!room) {
+                return callback({
+                    ok: false,
+                    message: "Không tìm thấy phòng!"
+                });
+            }
+
+            if (room.players.length >= 2 || room.isBot) {
+                return callback({
+                    ok: false,
+                    message: "Phòng đã đủ người!"
+                });
+            }
+
+            if (room.status !== "waiting") {
+                return callback({
+                    ok: false,
+                    message: "Phòng không thể tham gia lúc này!"
+                });
+            }
+
+            room.players.push({
+                id: socket.id,
+                symbol: "O",
+                name: cleanName(name)
+            });
+
+            socket.join(code);
+
+            callback({
+                ok: true,
+                code,
+                symbol: "O"
+            });
+
+            // Cả hai người bắt đầu đếm ngược
             startRoomCountdown(room);
         }
-    });
+    );
 
+    // --------------------------------------
+    // ĐÁNH CỜ ONLINE
+    // --------------------------------------
+
+    socket.on(
+        "makeMove",
+        ({ code, row, col } = {}, callback = () => {}) => {
+            code = String(code || "")
+                .trim()
+                .toUpperCase();
+
+            const room = rooms.get(code);
+
+            if (!room) {
+                return callback({
+                    ok: false,
+                    message: "Phòng không tồn tại!"
+                });
+            }
+
+            const player = room.players.find(
+                p => p.id === socket.id
+            );
+
+            if (!player) {
+                return callback({
+                    ok: false,
+                    message: "Bạn không thuộc phòng này!"
+                });
+            }
+
+            if (room.status !== "playing") {
+                return callback({
+                    ok: false,
+                    message: "Ván chơi chưa sẵn sàng!"
+                });
+            }
+
+            if (player.symbol !== room.turn) {
+                return callback({
+                    ok: false,
+                    message: "Chưa đến lượt bạn!"
+                });
+            }
+
+            if (
+                !Number.isInteger(row) ||
+                !Number.isInteger(col) ||
+                row < 0 || row >= SIZE ||
+                col < 0 || col >= SIZE
+            ) {
+                return callback({
+                    ok: false,
+                    message: "Vị trí không hợp lệ!"
+                });
+            }
+
+            if (room.board[row][col] !== null) {
+                return callback({
+                    ok: false,
+                    message: "Ô này đã có quân!"
+                });
+            }
+
+            room.board[row][col] = player.symbol;
+
+            const winningCells = checkWinner(
+                room.board,
+                row,
+                col,
+                player.symbol
+            );
+
+            if (winningCells) {
+                room.status = "finished";
+                room.winner = player.symbol;
+                room.winningCells = winningCells;
+            } else if (isBoardFull(room.board)) {
+                room.status = "draw";
+            } else {
+                room.turn =
+                    player.symbol === "X" ? "O" : "X";
+            }
+
+            callback({ ok: true });
+
+            sendState(room);
+
+            // Nếu là phòng bot thì máy tự đánh
+            if (room.isBot && room.status === "playing") {
+                setTimeout(() => {
+                    // Kiểm tra lại trạng thái trước khi bot đánh
+                    if (
+                        rooms.get(room.code) === room &&
+                        room.status === "playing"
+                    ) {
+                        botMove(room);
+                    }
+                }, 650);
+            }
+        }
+    );
+
+    // --------------------------------------
+    // CHƠI LẠI
+    // --------------------------------------
+
+    socket.on(
+        "restartGame",
+        ({ code } = {}, callback = () => {}) => {
+            code = String(code || "")
+                .trim()
+                .toUpperCase();
+
+            const room = rooms.get(code);
+
+            if (!room) {
+                return callback({
+                    ok: false,
+                    message: "Phòng không tồn tại!"
+                });
+            }
+
+            if (!room.players.some(p => p.id === socket.id)) {
+                return callback({
+                    ok: false,
+                    message: "Bạn không thuộc phòng này!"
+                });
+            }
+
+            if (!room.isBot && room.players.length < 2) {
+                return callback({
+                    ok: false,
+                    message: "Cần đủ 2 người chơi!"
+                });
+            }
+
+            // Hủy đếm cũ
+            clearRoomCountdown(room);
+
+            room.board = newBoard();
+            room.turn = "X";
+            room.winner = null;
+            room.winningCells = [];
+
+            callback({ ok: true });
+
+            if (room.isBot) {
+                room.status = "playing";
+                sendState(room);
+            } else {
+                // Online: đếm ngược lại cho cả hai
+                startRoomCountdown(room);
+            }
+        }
+    );
+
+    // --------------------------------------
     // RỜI PHÒNG
-    socket.on("leaveRoom", ({ code } = {}, callback = () => {}) => {
-        const result = leaveRoom(socket, code);
-        callback(result);
-    });
+    // --------------------------------------
 
-    // NGẮT KẾT NỐI
+    socket.on(
+        "leaveRoom",
+        ({ code } = {}, callback = () => {}) => {
+            const result = leaveRoom(socket, code);
+
+            if (typeof callback === "function") {
+                callback(result);
+            }
+        }
+    );
+
+    // --------------------------------------
+    // MẤT KẾT NỐI
+    // --------------------------------------
+
     socket.on("disconnect", () => {
-        console.log("Người chơi ngắt kết nối:", socket.id);
+        console.log(
+            "Người chơi ngắt kết nối:",
+            socket.id
+        );
 
         for (const room of rooms.values()) {
-            if (room.players.some(p => p.id === socket.id)) {
+            if (
+                room.players.some(
+                    player => player.id === socket.id
+                )
+            ) {
                 leaveRoom(socket, room.code);
                 break;
             }
@@ -545,6 +793,12 @@ io.on("connection", socket => {
     });
 });
 
+// ==========================================
+// KHỞI ĐỘNG SERVER
+// ==========================================
+
 server.listen(PORT, () => {
-    console.log(`Caro Online đang chạy tại cổng ${PORT}`);
+    console.log(
+        `Caro Online đang chạy tại cổng ${PORT}`
+    );
 });
