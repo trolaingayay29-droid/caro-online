@@ -795,3 +795,185 @@ h1, h2, h3, p {
         width: 100%;
     }
 }
+
+
+/* ========================================
+   MÀN HÌNH CHỜ VÀ ĐẾM NGƯỢC 3 - 2 - 1
+======================================== */
+
+.countdown-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 20px;
+
+    background: rgba(5, 8, 20, .82);
+
+    backdrop-filter: blur(9px);
+    -webkit-backdrop-filter: blur(9px);
+
+    animation: overlayFadeIn .25s ease;
+}
+
+/* Ẩn màn hình chờ */
+
+.countdown-overlay.hidden {
+    display: none !important;
+}
+
+/* Hộp thông báo ở giữa màn hình */
+
+.countdown-box {
+    width: min(420px, 100%);
+    padding: 35px 25px;
+
+    text-align: center;
+
+    border: 1px solid rgba(255, 255, 255, .15);
+    border-radius: 24px;
+
+    background: linear-gradient(
+        145deg,
+        #1b2944,
+        #111a2d
+    );
+
+    box-shadow: 0 20px 70px rgba(0, 0, 0, .45);
+
+    animation: countdownBoxIn .35s ease;
+}
+
+/* Icon trò chơi */
+
+.countdown-icon {
+    margin-bottom: 15px;
+    font-size: 42px;
+}
+
+/* Tiêu đề */
+
+.countdown-box h2 {
+    margin: 0 0 12px;
+
+    color: #fff;
+    font-size: 24px;
+    font-weight: 800;
+}
+
+/* Nội dung */
+
+.countdown-box p {
+    margin: 0;
+
+    color: #aebbd2;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+/* Số đếm ngược */
+
+.countdown-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    min-height: 100px;
+    margin-top: 18px;
+
+    color: #65e6ff;
+    font-size: 76px;
+    font-weight: 900;
+
+    text-shadow: 0 0 25px rgba(101, 230, 255, .5);
+}
+
+/* Hiệu ứng khi số thay đổi */
+
+.countdown-number.pop {
+    animation: countdownPop .75s ease;
+}
+
+/* Chữ bắt đầu */
+
+.countdown-number.start-text {
+    color: #70f5a5;
+    font-size: 38px;
+
+    text-shadow: 0 0 25px rgba(112, 245, 165, .5);
+}
+
+/* Hiệu ứng xuất hiện nền */
+
+@keyframes overlayFadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* Hiệu ứng hộp xuất hiện */
+
+@keyframes countdownBoxIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(.92);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Hiệu ứng số đếm */
+
+@keyframes countdownPop {
+    0% {
+        opacity: 0;
+        transform: scale(.4);
+    }
+
+    45% {
+        opacity: 1;
+        transform: scale(1.25);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Tối ưu điện thoại */
+
+@media (max-width: 480px) {
+    .countdown-box {
+        padding: 30px 18px;
+        border-radius: 20px;
+    }
+
+    .countdown-box h2 {
+        font-size: 21px;
+    }
+
+    .countdown-box p {
+        font-size: 13px;
+    }
+
+    .countdown-number {
+        min-height: 85px;
+        font-size: 65px;
+    }
+
+    .countdown-number.start-text {
+        font-size: 32px;
+    }
+}
