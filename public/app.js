@@ -36,6 +36,7 @@ const countdownTitleEl = $("countdownTitle");
 const countdownDescriptionEl = $("countdownDescription");
 const countdownNumberEl = $("countdownNumber");
 
+// Các phần tử người chơi
 const playerXEl = $("playerX");
 const playerOEl = $("playerO");
 const nameXEl = $("nameX");
@@ -88,7 +89,8 @@ function showWaitingOverlay() {
     countdownDescriptionEl.textContent =
         "Khi có đủ 2 người chơi, trận đấu sẽ bắt đầu";
 
-    countdownNumberEl.textContent = "⌛";
+    // Đồng hồ cát xoay được hiển thị riêng trong HTML
+    countdownNumberEl.textContent = "";
     countdownNumberEl.className = "countdown-number";
 }
 
@@ -424,7 +426,6 @@ function updateStatus(state) {
 
 if (socket) {
 
-    // Nhận trạng thái bàn cờ
     socket.on("gameState", (state) => {
         if (botMode) return;
 
@@ -438,9 +439,24 @@ if (socket) {
         if (state.status === "waiting") {
             showWaitingOverlay();
         }
+
+        // Nếu server gửi trạng thái countdown,
+        // giữ màn hình phủ trong lúc chờ tín hiệu đếm số.
+        else if (state.status === "countdown") {
+            countdownOverlayEl?.classList.remove("hidden");
+        }
+
+        // Khi game đang chơi hoặc đã kết thúc,
+        // không để màn hình chờ che bàn cờ.
+        else if (
+            state.status === "playing" ||
+            state.status === "finished" ||
+            state.status === "draw"
+        ) {
+            hideCountdown();
+        }
     });
 
-    // Nhận số đếm ngược từ server
     socket.on("countdown", (data) => {
         if (botMode) return;
 
@@ -453,13 +469,11 @@ if (socket) {
         }
     });
 
-    // Server báo đếm ngược đã kết thúc
     socket.on("countdownEnd", () => {
         if (botMode) return;
 
         showCountdownStart();
 
-        // Giữ chữ BẮT ĐẦU một chút rồi ẩn
         setTimeout(() => {
             hideCountdown();
         }, 800);
