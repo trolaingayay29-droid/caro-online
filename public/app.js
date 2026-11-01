@@ -402,7 +402,6 @@ function startBotGame() {
         return;
     }
 
-    // Hủy lượt máy cũ nếu đang có
     clearTimeout(botTimer);
 
     botMode = true;
@@ -455,7 +454,6 @@ function getDifficultyName() {
 }
 
 // GẮN SỰ KIỆN NÚT CHƠI VỚI MÁY
-// Chỉ đăng ký đúng một lần
 
 if (playBotBtn) {
     playBotBtn.addEventListener("click", startBotGame);
@@ -514,8 +512,11 @@ function makeBotGameMove(row, col) {
     renderBoard(currentState);
 
     botTimer = setTimeout(() => {
-        if (!botMode || !currentState ||
-            currentState.status !== "playing") {
+        if (
+            !botMode ||
+            !currentState ||
+            currentState.status !== "playing"
+        ) {
             botThinking = false;
             return;
         }
@@ -936,6 +937,52 @@ if (socket) {
     console.warn(
         "Socket.IO chưa tải. Chế độ chơi với máy vẫn sử dụng được."
     );
+}
+
+// ==========================================
+// HIỆU ỨNG MŨI TÊN CHỌN ĐỘ KHÓ
+// ==========================================
+
+const difficultyWrapper = document.getElementById("difficultyWrapper");
+const difficultySelect = document.getElementById("botDifficulty");
+
+if (difficultyWrapper && difficultySelect) {
+
+    // Bấm vào ô chọn: xoay mũi tên lên
+    difficultySelect.addEventListener("pointerdown", () => {
+        difficultyWrapper.classList.toggle("open");
+    });
+
+    // Chọn xong: xoay mũi tên xuống
+    difficultySelect.addEventListener("change", () => {
+        difficultyWrapper.classList.remove("open");
+    });
+
+    // Nhấn Enter hoặc Space để mở
+    difficultySelect.addEventListener("keydown", (event) => {
+        if (
+            event.key === "Enter" ||
+            event.key === " "
+        ) {
+            difficultyWrapper.classList.add("open");
+        }
+
+        if (event.key === "Escape") {
+            difficultyWrapper.classList.remove("open");
+        }
+    });
+
+    // Bấm ra ngoài ô chọn
+    document.addEventListener("pointerdown", (event) => {
+        if (!difficultyWrapper.contains(event.target)) {
+            difficultyWrapper.classList.remove("open");
+        }
+    });
+
+    // Mất focus thì đóng
+    difficultySelect.addEventListener("blur", () => {
+        difficultyWrapper.classList.remove("open");
+    });
 }
 
 // ==========================================
