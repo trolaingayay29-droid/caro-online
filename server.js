@@ -1,4 +1,3 @@
-
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -7,17 +6,23 @@ const path = require("path");
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+
+const io = new Server(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
 
 const PORT = process.env.PORT || 3000;
 const SIZE = 15;
 
-// Hiển thị các file trong thư mục public
 app.use(express.static(path.join(__dirname, "public")));
 
+/* Danh sách phòng đang hoạt động */
 const rooms = new Map();
 
-// Tạo mã phòng ngẫu nhiên
+/* Tạo mã phòng */
 function createCode() {
     let code;
 
@@ -30,7 +35,7 @@ function createCode() {
     return code;
 }
 
-// Tạo bàn cờ 15x15
+/* Tạo bàn cờ 15 x 15 */
 function newBoard() {
     return Array.from(
         { length: SIZE },
@@ -38,21 +43,21 @@ function newBoard() {
     );
 }
 
-// Xử lý tên người chơi
+/* Làm sạch tên người chơi */
 function cleanName(name) {
     return String(name || "Người chơi")
         .trim()
         .slice(0, 18) || "Người chơi";
 }
 
-// Gửi trạng thái phòng cho người chơi
+/* Gửi trạng thái phòng */
 function sendState(room) {
     io.to(room.code).emit("gameState", {
         code: room.code,
         board: room.board,
-        players: room.players.map(p => ({
-            symbol: p.symbol,
-            name: p.name
+        players: room.players.map(player => ({
+            symbol: player.symbol,
+            name: player.name
         })),
         turn: room.turn,
         status: room.status,
@@ -61,7 +66,7 @@ function sendState(room) {
     });
 }
 
-// Kiểm tra người thắng
+/* Kiểm tra thắng */
 function checkWinner(board, row, col, symbol) {
     const directions = [
         [0, 1],
@@ -78,11 +83,14 @@ function checkWinner(board, row, col, symbol) {
             let c = col + dc * sign;
 
             while (
-                r >= 0 && r < SIZE &&
-                c >= 0 && c < SIZE &&
+                r >= 0 &&
+                r < SIZE &&
+                c >= 0 &&
+                c < SIZE &&
                 board[r][c] === symbol
             ) {
                 cells.push([r, c]);
+
                 r += dr * sign;
                 c += dc * sign;
             }
@@ -96,21 +104,77 @@ function checkWinner(board, row, col, symbol) {
     return null;
 }
 
-// Kết nối Socket.IO
-io.on("connection", socket => {
+/* Xử lý người chơi rời phòng */
+function leaveRoom(socket, code) {
+    code = String(code || "").trim().toUpperCase();
 
-    // TẠO PHÒNG
+    const room = rooms.get(code);
+
+    if (!room) {
+        return {
+            ok: false,
+            message: "Phòng không tồn tại!"
+        };
+    }
+
+    const playerExists = room.players.some(
+        player => player.id === socket.id
+    );
+
+    if (!playerExists) {
+        return {
+            ok: false,
+            message: "Bạn không thuộc phòng này!"
+        };
+    }
+
+    room.players = room.players.filter(
+        player => player.id !== socket.id
+    );
+
+    socket.leave(room.code);
+
+    /* Báo cho người rời phòng */
+    socket.emit("roomLeft");
+
+    if (room.players.length === 0) {
+        rooms.delete(room.code);
+    } else {
+        /* Đưa ván đấu về trạng thái chờ */
+        room.board = newBoard();
+        room.turn = "X";
+        room.status = "waiting";
+        room.winner = null;
+        room.winningCells = [];
+
+        io.to(room.code).emit("opponentLeft");
+
+        sendState(room);
+    }
+
+    return { ok: true };
+}
+
+/* Kết nối người chơi */
+io.on("connection", socket => {
+    console.log("Người chơi kết nối:", socket.id);
+
+    /* TẠO PHÒNG */
     socket.on("createRoom", ({ name } = {}, callback = () => {}) => {
         const code = createCode();
 
         const room = {
             code,
             board: newBoard(),
-            players: [{
-                id: socket.id,
-                symbol: "X",
-                name: cleanName(name)
-            }],
+
+            players: [
+                {
+                    id: socket.id,
+                    symbol: "X",
+                    name: cleanName(name)
+                }
+            ],
+
             turn: "X",
             status: "waiting",
             winner: null,
@@ -118,6 +182,7 @@ io.on("connection", socket => {
         };
 
         rooms.set(code, room);
+
         socket.join(code);
 
         callback({
@@ -129,7 +194,7 @@ io.on("connection", socket => {
         sendState(room);
     });
 
-    // THAM GIA PHÒNG
+    /* THAM GIA PHÒNG */
     socket.on("joinRoom", ({ code, name } = {}, callback = () => {}) => {
         code = String(code || "").trim().toUpperCase();
 
@@ -146,6 +211,13 @@ io.on("connection", socket => {
             return callback({
                 ok: false,
                 message: "Phòng đã đủ người!"
+            });
+        }
+
+        if (room.status !== "waiting") {
+            return callback({
+                ok: false,
+                message: "Phòng không thể tham gia lúc này!"
             });
         }
 
@@ -168,11 +240,11 @@ io.on("connection", socket => {
         sendState(room);
     });
 
-    // ĐÁNH CỜ
+    /* ĐÁNH CỜ */
     socket.on("makeMove", ({ code, row, col } = {}, callback = () => {}) => {
-        const room = rooms.get(
-            String(code || "").toUpperCase()
-        );
+        code = String(code || "").trim().toUpperCase();
+
+        const room = rooms.get(code);
 
         if (!room) {
             return callback({
@@ -188,7 +260,7 @@ io.on("connection", socket => {
         if (!player) {
             return callback({
                 ok: false,
-                message: "Bạn không thuộc phòng!"
+                message: "Bạn không thuộc phòng này!"
             });
         }
 
@@ -209,12 +281,14 @@ io.on("connection", socket => {
         if (
             !Number.isInteger(row) ||
             !Number.isInteger(col) ||
-            row < 0 || row >= SIZE ||
-            col < 0 || col >= SIZE
+            row < 0 ||
+            row >= SIZE ||
+            col < 0 ||
+            col >= SIZE
         ) {
             return callback({
                 ok: false,
-                message: "Nước đi không hợp lệ!"
+                message: "Vị trí không hợp lệ!"
             });
         }
 
@@ -225,10 +299,10 @@ io.on("connection", socket => {
             });
         }
 
-        // Đánh quân cờ
+        /* Đặt quân */
         room.board[row][col] = player.symbol;
 
-        // Kiểm tra thắng
+        /* Kiểm tra thắng */
         const winningCells = checkWinner(
             room.board,
             row,
@@ -247,8 +321,7 @@ io.on("connection", socket => {
         ) {
             room.status = "draw";
         } else {
-            room.turn =
-                room.turn === "X" ? "O" : "X";
+            room.turn = room.turn === "X" ? "O" : "X";
         }
 
         callback({ ok: true });
@@ -256,11 +329,11 @@ io.on("connection", socket => {
         sendState(room);
     });
 
-    // CHƠI LẠI
+    /* CHƠI LẠI */
     socket.on("restartGame", ({ code } = {}, callback = () => {}) => {
-        const room = rooms.get(
-            String(code || "").toUpperCase()
-        );
+        code = String(code || "").trim().toUpperCase();
+
+        const room = rooms.get(code);
 
         if (!room) {
             return callback({
@@ -269,10 +342,14 @@ io.on("connection", socket => {
             });
         }
 
-        if (!room.players.some(p => p.id === socket.id)) {
+        const playerExists = room.players.some(
+            player => player.id === socket.id
+        );
+
+        if (!playerExists) {
             return callback({
                 ok: false,
-                message: "Bạn không thuộc phòng!"
+                message: "Bạn không thuộc phòng này!"
             });
         }
 
@@ -294,53 +371,27 @@ io.on("connection", socket => {
         sendState(room);
     });
 
-    // RỜI PHÒNG
-    socket.on("leaveRoom", ({ code } = {}) => {
-        leaveRoom(socket, code);
+    /* RỜI PHÒNG */
+    socket.on("leaveRoom", ({ code } = {}, callback = () => {}) => {
+        const result = leaveRoom(socket, code);
+
+        callback(result);
     });
 
-    // NGẮT KẾT NỐI
+    /* NGẮT KẾT NỐI */
     socket.on("disconnect", () => {
+        console.log("Người chơi ngắt kết nối:", socket.id);
+
         for (const room of rooms.values()) {
             if (room.players.some(p => p.id === socket.id)) {
                 leaveRoom(socket, room.code);
+                break;
             }
         }
     });
 });
 
-// Xử lý người chơi rời phòng
-function leaveRoom(socket, code) {
-    const room = rooms.get(
-        String(code || "").toUpperCase()
-    );
-
-    if (!room) return;
-
-    room.players = room.players.filter(
-        p => p.id !== socket.id
-    );
-
-    socket.leave(room.code);
-
-    if (room.players.length === 0) {
-        rooms.delete(room.code);
-    } else {
-        room.status = "waiting";
-        room.board = newBoard();
-        room.turn = "X";
-        room.winner = null;
-        room.winningCells = [];
-
-        io.to(room.code).emit("opponentLeft");
-
-        sendState(room);
-    }
-}
-
-// Khởi chạy server
+/* Khởi chạy server */
 server.listen(PORT, () => {
-    console.log(
-        `Caro Online đang chạy tại http://localhost:${PORT}`
-    );
+    console.log(`Caro Online đang chạy tại cổng ${PORT}`);
 });
