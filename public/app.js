@@ -89,7 +89,6 @@ function showWaitingOverlay() {
     countdownDescriptionEl.textContent =
         "Khi có đủ 2 người chơi, trận đấu sẽ bắt đầu";
 
-    // Đồng hồ cát xoay được hiển thị riêng trong HTML
     countdownNumberEl.textContent = "";
     countdownNumberEl.className = "countdown-number";
 }
@@ -106,7 +105,6 @@ function showCountdown(count) {
     countdownNumberEl.className = "countdown-number";
     countdownNumberEl.textContent = String(count);
 
-    // Chạy lại hiệu ứng mỗi lần số thay đổi
     void countdownNumberEl.offsetWidth;
     countdownNumberEl.classList.add("pop");
 }
@@ -247,8 +245,6 @@ function showGame(data) {
     messageEl.textContent = "";
     gameMessageEl.textContent = "";
 
-    // Người tạo phòng X sẽ chờ đối thủ.
-    // Người O chờ tín hiệu countdown từ server.
     if (mySymbol === "X") {
         showWaitingOverlay();
     } else {
@@ -425,7 +421,6 @@ function updateStatus(state) {
 // ==========================================
 
 if (socket) {
-
     socket.on("gameState", (state) => {
         if (botMode) return;
 
@@ -435,19 +430,14 @@ if (socket) {
         updateStatus(state);
         renderBoard(state);
 
-        // Phòng chưa đủ người thì hiển thị màn hình chờ
         if (state.status === "waiting") {
             showWaitingOverlay();
         }
 
-        // Nếu server gửi trạng thái countdown,
-        // giữ màn hình phủ trong lúc chờ tín hiệu đếm số.
         else if (state.status === "countdown") {
             countdownOverlayEl?.classList.remove("hidden");
         }
 
-        // Khi game đang chơi hoặc đã kết thúc,
-        // không để màn hình chờ che bàn cờ.
         else if (
             state.status === "playing" ||
             state.status === "finished" ||
@@ -588,7 +578,6 @@ function getDifficultyName() {
     return "Trung bình";
 }
 
-// Gắn sự kiện nút chơi với máy
 if (playBotBtn) {
     playBotBtn.addEventListener("click", startBotGame);
 } else {
@@ -860,14 +849,73 @@ function chooseBotMove(board) {
 
     if (!candidates.length) return null;
 
-    // MỨC DỄ: ĐÁNH NGẪU NHIÊN
+    // ======================================
+    // MỨC DỄ: BIẾT CHẶN NHƯNG VẪN CÓ SƠ HỞ
+    // ======================================
+
     if (botDifficulty === "easy") {
+
+        // Máy có thể thắng ngay thì ưu tiên thắng
+        for (const move of candidates) {
+            if (
+                isWinningMove(
+                    board,
+                    move.row,
+                    move.col,
+                    "O"
+                )
+            ) {
+                return move;
+            }
+        }
+
+        // Người chơi có thể thắng ngay thì bắt buộc chặn
+        for (const move of candidates) {
+            if (
+                isWinningMove(
+                    board,
+                    move.row,
+                    move.col,
+                    "X"
+                )
+            ) {
+                return move;
+            }
+        }
+
+        // Tìm những ô có thể chặn đường 3 quân của người chơi
+        const defenseMoves = candidates
+            .map(move => ({
+                ...move,
+                score: scoreMove(
+                    board,
+                    move.row,
+                    move.col,
+                    "X"
+                )
+            }))
+            .filter(move => move.score >= 5000)
+            .sort((a, b) => b.score - a.score);
+
+        // Có 65% cơ hội chọn nước chặn
+        if (
+            defenseMoves.length > 0 &&
+            Math.random() < 0.65
+        ) {
+            return defenseMoves[0];
+        }
+
+        // Các trường hợp khác thì đánh ngẫu nhiên
         return candidates[
             Math.floor(Math.random() * candidates.length)
         ];
     }
 
-    // ƯU TIÊN ĐÁNH THẮNG NGAY
+    // ======================================
+    // TRUNG BÌNH VÀ KHÓ
+    // ======================================
+
+    // Ưu tiên đánh thắng ngay
     for (const move of candidates) {
         if (
             isWinningMove(
@@ -881,7 +929,7 @@ function chooseBotMove(board) {
         }
     }
 
-    // ƯU TIÊN CHẶN NGƯỜI CHƠI THẮNG
+    // Ưu tiên chặn người chơi thắng
     for (const move of candidates) {
         if (
             isWinningMove(
@@ -895,7 +943,7 @@ function chooseBotMove(board) {
         }
     }
 
-    // CHẤM ĐIỂM CÁC NƯỚC ĐI
+    // Chấm điểm các nước đi
     const scoredMoves = candidates.map(move => {
         const attack = scoreMove(
             board,
@@ -937,7 +985,7 @@ function chooseBotMove(board) {
 
     scoredMoves.sort((a, b) => b.score - a.score);
 
-    // TRUNG BÌNH: ĐÔI KHI CHỌN NƯỚC KHÁC
+    // Trung bình: đôi khi chọn nước khác trong nhóm tốt nhất
     if (
         botDifficulty === "medium" &&
         Math.random() < 0.18
@@ -952,7 +1000,7 @@ function chooseBotMove(board) {
         ];
     }
 
-    // KHÓ: CHỌN NƯỚC ĐI CÓ ĐIỂM CAO NHẤT
+    // Khó: chọn nước có điểm cao nhất
     return scoredMoves[0];
 }
 
@@ -1034,7 +1082,7 @@ function leaveCurrentRoom() {
 backBtn.addEventListener("click", leaveCurrentRoom);
 
 // ==========================================
-// ĐỐI THỦ RỜI PHÒNG
+// ĐỐI THỦ RỜI PHÒNG VÀ KẾT NỐI
 // ==========================================
 
 if (socket) {
@@ -1047,12 +1095,8 @@ if (socket) {
         }
     });
 
-    // KẾT NỐI
     socket.on("connect", () => {
-        console.log(
-            "Đã kết nối máy chủ:",
-            socket.id
-        );
+        console.log("Đã kết nối máy chủ:", socket.id);
     });
 
     socket.on("disconnect", () => {
@@ -1085,7 +1129,6 @@ const difficultySelect =
     document.getElementById("botDifficulty");
 
 if (difficultyWrapper && difficultySelect) {
-
     difficultySelect.addEventListener("pointerdown", () => {
         difficultyWrapper.classList.toggle("open");
     });
