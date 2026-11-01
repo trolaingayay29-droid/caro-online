@@ -977,3 +977,61 @@ h1, h2, h3, p {
         font-size: 32px;
     }
 }
+
+
+/* ĐỒNG HỒ CÁT XOAY LIÊN TỤC */
+.hourglass-spin {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 25px auto 10px;
+    font-size: 76px;
+    width: 100px;
+    height: 100px;
+    animation: hourglassRotate 2s ease-in-out infinite;
+    transform-origin: center;
+    filter: drop-shadow(0 0 14px rgba(101, 230, 255, .65));
+}
+
+@keyframes hourglassRotate {
+    0% {
+        transform: rotate(0deg) scale(1);
+    }
+    40% {
+        transform: rotate(180deg) scale(1.12);
+    }
+    50% {
+        transform: rotate(180deg) scale(1.12);
+    }
+    90% {
+        transform: rotate(360deg) scale(1);
+    }
+    100% {
+        transform: rotate(360deg) scale(1);
+    }
+}
+
+/* MÃ PHÒNG */
+.room {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.room strong {
+    color: #65e6ff;
+    font-size: 22px;
+    letter-spacing: 4px;
+    text-shadow: 0 0 12px rgba(101, 230, 255, .4);
+}
+
+.copy-btn {
+    cursor: pointer;
+    transition: .2s ease;
+}
+
+.copy-btn:hover {
+    transform: scale(1.1);
+}
