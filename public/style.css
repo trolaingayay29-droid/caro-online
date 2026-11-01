@@ -201,8 +201,7 @@ h1, h2, h3, p {
     font-weight: 700;
 }
 
-.lobby-card input,
-.difficulty-select {
+.lobby-card input {
     display: block;
     width: 100%;
     min-width: 0;
@@ -216,8 +215,7 @@ h1, h2, h3, p {
     transition: border-color .2s, box-shadow .2s;
 }
 
-.lobby-card input:focus,
-.difficulty-select:focus {
+.lobby-card input:focus {
     border-color: var(--purple);
     box-shadow: 0 0 0 3px rgba(173, 145, 255, .12);
 }
@@ -225,6 +223,8 @@ h1, h2, h3, p {
 .lobby-card input::placeholder {
     color: #6f829f;
 }
+
+/* BUTTONS */
 
 .primary,
 .join button,
@@ -314,9 +314,67 @@ h1, h2, h3, p {
     line-height: 1.6;
 }
 
-.difficulty-select {
+/* ĐỘ KHÓ - CUSTOM ARROW */
+
+.difficulty-select-wrapper {
+    position: relative;
+    width: 100%;
     margin-top: 10px;
+}
+
+.difficulty-select {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    height: 48px;
+    padding: 0 42px 0 15px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    outline: none;
+    background: #0a1424;
+    color: white;
     cursor: pointer;
+
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+
+    transition: border-color .2s, box-shadow .2s;
+}
+
+.difficulty-select:focus {
+    border-color: var(--purple);
+    box-shadow: 0 0 0 3px rgba(173, 145, 255, .12);
+}
+
+.difficulty-select option {
+    background: #111d30;
+    color: white;
+}
+
+/* MŨI TÊN */
+
+.difficulty-arrow {
+    position: absolute;
+    top: 50%;
+    right: 17px;
+    width: 9px;
+    height: 9px;
+    border-right: 2px solid white;
+    border-bottom: 2px solid white;
+    transform: translateY(-70%) rotate(45deg);
+    transition: transform .25s ease;
+    pointer-events: none;
+}
+
+/* KHI MỞ DANH SÁCH */
+
+.difficulty-select-wrapper.open .difficulty-arrow {
+    transform: translateY(-30%) rotate(225deg);
+}
+
+.difficulty-select:focus-visible {
+    border-color: var(--purple);
 }
 
 .bot-button {
