@@ -34,7 +34,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
     font: inherit;
 }
 
@@ -45,6 +46,10 @@ button {
 button:disabled {
     cursor: not-allowed;
     opacity: .45;
+}
+
+.hidden {
+    display: none !important;
 }
 
 /* HEADER */
@@ -101,10 +106,6 @@ button:disabled {
 main {
     width: min(1100px, 100%);
     margin: 0 auto;
-}
-
-.hidden {
-    display: none !important;
 }
 
 .eyebrow {
@@ -200,7 +201,8 @@ h1, h2, h3, p {
     font-weight: 700;
 }
 
-.lobby-card input {
+.lobby-card input,
+.difficulty-select {
     display: block;
     width: 100%;
     min-width: 0;
@@ -214,7 +216,8 @@ h1, h2, h3, p {
     transition: border-color .2s, box-shadow .2s;
 }
 
-.lobby-card input:focus {
+.lobby-card input:focus,
+.difficulty-select:focus {
     border-color: var(--purple);
     box-shadow: 0 0 0 3px rgba(173, 145, 255, .12);
 }
@@ -224,7 +227,8 @@ h1, h2, h3, p {
 }
 
 .primary,
-.join button {
+.join button,
+.bot-button {
     border: 0;
     border-radius: 10px;
     background: linear-gradient(120deg, #7659db, #9874f5);
@@ -234,7 +238,8 @@ h1, h2, h3, p {
 }
 
 .primary:hover:not(:disabled),
-.join button:hover:not(:disabled) {
+.join button:hover:not(:disabled),
+.bot-button:hover:not(:disabled) {
     filter: brightness(1.15);
     transform: translateY(-2px);
 }
@@ -286,6 +291,39 @@ h1, h2, h3, p {
     margin: 13px 0 0;
     color: #ff929e;
     font-size: 13px;
+}
+
+/* PLAY WITH BOT */
+
+.bot-section {
+    margin-top: 24px;
+    padding-top: 22px;
+    border-top: 1px solid var(--border);
+}
+
+.bot-section h3 {
+    margin-bottom: 8px;
+    color: white;
+    font-size: 17px;
+}
+
+.bot-section p {
+    margin-bottom: 15px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.difficulty-select {
+    margin-top: 10px;
+    cursor: pointer;
+}
+
+.bot-button {
+    width: 100%;
+    min-height: 49px;
+    margin-top: 13px;
+    font-size: 14px;
 }
 
 /* GAME */
@@ -445,7 +483,7 @@ h1, h2, h3, p {
     color: var(--purple);
 }
 
-/* BOARD - KÍCH THƯỚC CỐ ĐỊNH, KHÔNG PHÌNH KHI ĐÁNH */
+/* BOARD */
 
 .board-shell {
     width: min(620px, 100%);
@@ -538,6 +576,7 @@ h1, h2, h3, p {
 .actions {
     display: flex;
     justify-content: center;
+    gap: 12px;
     margin-top: 22px;
 }
 
@@ -688,5 +727,13 @@ h1, h2, h3, p {
 
     .game-heading h2 {
         font-size: 23px;
+    }
+
+    .actions {
+        flex-direction: column;
+    }
+
+    .actions button {
+        width: 100%;
     }
 }
