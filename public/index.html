@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#090d18">
-    <meta name="description" content="CARO.ONLINE - Chơi cờ Caro trực tuyến cùng bạn bè">
+    <meta name="description" content="CARO.ONLINE - Chơi cờ Caro cùng bạn bè hoặc máy">
     <title>CARO.ONLINE</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -15,47 +15,35 @@
             <span class="brand-mark">✕</span>
             <span>CARO<span class="brand-accent">.ONLINE</span></span>
         </a>
-
         <div class="online">
-            <span class="online-dot"></span>
-            MULTIPLAYER
+            <span class="online-dot"></span> MULTIPLAYER
         </div>
     </header>
 
     <main class="container">
-
-        <!-- SẢNH CHỜ -->
         <section id="lobby" class="lobby">
-
             <div class="hero">
                 <p class="eyebrow">CLASSIC STRATEGY · ONLINE</p>
-
-                <h1>
-                    Một bàn cờ.<br>
-                    <span>Hai bộ óc.</span>
-                </h1>
-
+                <h1>Một bàn cờ.<br><span>Hai bộ óc.</span></h1>
                 <p class="description">
-                    Thách đấu bạn bè trong những ván cờ Caro cân não.
-                    Tạo phòng riêng hoặc nhập mã phòng để bắt đầu.
+                    Thách đấu bạn bè hoặc thử sức với máy trong
+                    những ván cờ Caro cân não.
                 </p>
-
                 <div class="hero-points">
                     <span>✦ Chơi cùng bạn bè</span>
+                    <span>✦ Đấu với máy</span>
                     <span>✦ Miễn phí</span>
-                    <span>✦ Trực tuyến</span>
                 </div>
             </div>
 
             <div class="card lobby-card">
                 <div class="card-heading">
                     <span class="card-icon">♟</span>
-
                     <div>
                         <p class="eyebrow">SẴN SÀNG CHƯA?</p>
                         <h2>Vào trận thôi!</h2>
                         <p class="card-description">
-                            Nhập tên và chọn cách tham gia.
+                            Chọn cách chơi của ông.
                         </p>
                     </div>
                 </div>
@@ -71,16 +59,29 @@
                     >
                 </div>
 
-                <button
-                    id="createBtn"
-                    class="primary full-width"
-                    type="button"
-                >
-                    ＋ Tạo phòng mới
+                <button id="createBtn" class="primary full-width" type="button">
+                    ＋ Tạo phòng chơi với bạn
                 </button>
 
                 <div class="divider">
-                    <span>HOẶC THAM GIA PHÒNG</span>
+                    <span>HOẶC THỬ SỨC VỚI MÁY</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="botDifficulty">Độ khó</label>
+                    <select id="botDifficulty" class="difficulty-select">
+                        <option value="easy">Dễ - Máy đánh ngẫu nhiên</option>
+                        <option value="medium" selected>Trung bình - Biết chặn</option>
+                        <option value="hard">Khó - Máy ưu tiên chiến thuật</option>
+                    </select>
+                </div>
+
+                <button id="playBotBtn" class="bot-button full-width" type="button">
+                    🤖 Chơi với máy
+                </button>
+
+                <div class="divider">
+                    <span>HOẶC THAM GIA PHÒNG BẠN BÈ</span>
                 </div>
 
                 <div class="join">
@@ -91,12 +92,7 @@
                         maxlength="6"
                         autocomplete="off"
                     >
-
-                    <button
-                        id="joinBtn"
-                        class="secondary"
-                        type="button"
-                    >
+                    <button id="joinBtn" class="secondary" type="button">
                         Tham gia →
                     </button>
                 </div>
@@ -105,10 +101,7 @@
             </div>
         </section>
 
-
-        <!-- KHU VỰC TRẬN ĐẤU -->
         <section id="game" class="game hidden">
-
             <div class="game-topbar">
                 <button id="backBtn" class="back secondary" type="button">
                     ← Sảnh chờ
@@ -117,36 +110,29 @@
                 <div class="room">
                     <span>MÃ PHÒNG</span>
                     <strong id="roomCodeLabel">------</strong>
-
                     <button
                         id="copyCodeBtn"
                         class="copy-btn"
                         type="button"
                         aria-label="Sao chép mã phòng"
                         title="Sao chép mã phòng"
-                    >
-                        ▢
-                    </button>
+                    >▢</button>
                 </div>
             </div>
 
             <div class="game-heading">
-                <p class="eyebrow">TRẬN ĐẤU TRỰC TUYẾN</p>
+                <p class="eyebrow">TRẬN ĐẤU CARO</p>
                 <h2>Đối đầu nào!</h2>
             </div>
 
-            <!-- THÔNG TIN NGƯỜI CHƠI -->
             <div class="players">
-
                 <div id="playerX" class="player active">
                     <span class="symbol x">X</span>
-
                     <div class="player-info">
                         <small>QUÂN X</small>
                         <strong id="nameX">Đang chờ...</strong>
                         <em id="youX"></em>
                     </div>
-
                     <span class="turn-indicator"></span>
                 </div>
 
@@ -154,27 +140,20 @@
 
                 <div id="playerO" class="player">
                     <span class="symbol o">O</span>
-
                     <div class="player-info">
                         <small>QUÂN O</small>
                         <strong id="nameO">Đang chờ...</strong>
                         <em id="youO"></em>
                     </div>
-
                     <span class="turn-indicator"></span>
                 </div>
-
             </div>
 
-            <!-- TRẠNG THÁI VÁN ĐẤU -->
             <div class="status" aria-live="polite">
                 <span class="status-spark">✦</span>
-                <span id="statusText">
-                    Đang chờ người chơi thứ hai...
-                </span>
+                <span id="statusText">Đang chờ người chơi thứ hai...</span>
             </div>
 
-            <!-- BÀN CỜ -->
             <div class="board-area">
                 <div class="board-shell">
                     <div
@@ -186,20 +165,13 @@
                 </div>
             </div>
 
-            <!-- NÚT ĐIỀU KHIỂN -->
             <div class="actions">
-                <button
-                    id="restartBtn"
-                    class="primary"
-                    type="button"
-                    disabled
-                >
+                <button id="restartBtn" class="primary" type="button" disabled>
                     ↻ Chơi ván mới
                 </button>
             </div>
 
             <p id="gameMessage" class="message" role="status"></p>
-
         </section>
     </main>
 
