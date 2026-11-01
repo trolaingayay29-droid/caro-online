@@ -30,6 +30,12 @@ const messageEl = $("lobbyMessage");
 const gameMessageEl = $("gameMessage");
 const toastEl = $("toast");
 
+// Các phần tử đếm ngược
+const countdownOverlayEl = $("countdownOverlay");
+const countdownTitleEl = $("countdownTitle");
+const countdownDescriptionEl = $("countdownDescription");
+const countdownNumberEl = $("countdownNumber");
+
 const playerXEl = $("playerX");
 const playerOEl = $("playerO");
 const nameXEl = $("nameX");
@@ -67,6 +73,65 @@ function showToast(message) {
     toastTimer = setTimeout(() => {
         toastEl.classList.remove("show");
     }, 2200);
+}
+
+// ==========================================
+// MÀN HÌNH CHỜ VÀ ĐẾM NGƯỢC
+// ==========================================
+
+function showWaitingOverlay() {
+    if (!countdownOverlayEl) return;
+
+    countdownOverlayEl.classList.remove("hidden");
+
+    countdownTitleEl.textContent = "Đang chờ đối phương...";
+    countdownDescriptionEl.textContent =
+        "Khi có đủ 2 người chơi, trận đấu sẽ bắt đầu";
+
+    countdownNumberEl.textContent = "⌛";
+    countdownNumberEl.className = "countdown-number";
+}
+
+function showCountdown(count) {
+    if (!countdownOverlayEl) return;
+
+    countdownOverlayEl.classList.remove("hidden");
+
+    countdownTitleEl.textContent = "Trận đấu sắp bắt đầu!";
+    countdownDescriptionEl.textContent =
+        "Chuẩn bị tinh thần chiến đấu nhé!";
+
+    countdownNumberEl.className = "countdown-number";
+    countdownNumberEl.textContent = String(count);
+
+    // Chạy lại hiệu ứng mỗi lần số thay đổi
+    void countdownNumberEl.offsetWidth;
+    countdownNumberEl.classList.add("pop");
+}
+
+function hideCountdown() {
+    if (!countdownOverlayEl) return;
+
+    countdownOverlayEl.classList.add("hidden");
+}
+
+// ==========================================
+// HIỆU ỨNG BẮT ĐẦU
+// ==========================================
+
+function showCountdownStart() {
+    if (!countdownOverlayEl) return;
+
+    countdownOverlayEl.classList.remove("hidden");
+
+    countdownTitleEl.textContent = "TRẬN ĐẤU BẮT ĐẦU!";
+    countdownDescriptionEl.textContent =
+        "Chúc ông có một ván cờ thật hay!";
+
+    countdownNumberEl.className =
+        "countdown-number start-text";
+
+    countdownNumberEl.textContent = "BẮT ĐẦU!";
 }
 
 // ==========================================
@@ -137,7 +202,9 @@ function renderBoard(state) {
                 cell.appendChild(stone);
             }
 
-            stone.className = `stone ${String(value).toLowerCase()}`;
+            stone.className =
+                `stone ${String(value).toLowerCase()}`;
+
             stone.textContent = value;
         } else if (stone) {
             stone.remove();
@@ -178,6 +245,14 @@ function showGame(data) {
     messageEl.textContent = "";
     gameMessageEl.textContent = "";
 
+    // Người tạo phòng X sẽ chờ đối thủ.
+    // Người O chờ tín hiệu countdown từ server.
+    if (mySymbol === "X") {
+        showWaitingOverlay();
+    } else {
+        hideCountdown();
+    }
+
     showToast(`Đã vào phòng ${currentRoom}`);
 }
 
@@ -189,7 +264,9 @@ createBtn.addEventListener("click", () => {
     const name = nameInput.value.trim();
 
     if (!name) {
-        messageEl.textContent = "Ông nhập tên người chơi trước nhé!";
+        messageEl.textContent =
+            "Ông nhập tên người chơi trước nhé!";
+
         nameInput.focus();
         return;
     }
@@ -224,7 +301,9 @@ joinBtn.addEventListener("click", () => {
     const code = roomInput.value.trim().toUpperCase();
 
     if (!name) {
-        messageEl.textContent = "Ông nhập tên người chơi trước nhé!";
+        messageEl.textContent =
+            "Ông nhập tên người chơi trước nhé!";
+
         nameInput.focus();
         return;
     }
@@ -290,7 +369,13 @@ function updateStatus(state) {
     );
 
     if (state.status === "waiting") {
-        statusEl.textContent = "Đang chờ người chơi thứ hai...";
+        statusEl.textContent =
+            "Đang chờ người chơi thứ hai...";
+    }
+
+    else if (state.status === "countdown") {
+        statusEl.textContent =
+            "Trận đấu chuẩn bị bắt đầu...";
     }
 
     else if (state.status === "playing") {
@@ -329,14 +414,17 @@ function updateStatus(state) {
     restartBtn.disabled = botMode
         ? false
         : state.status === "waiting" ||
+          state.status === "countdown" ||
           (state.players || []).length < 2;
 }
 
 // ==========================================
-// NHẬN TRẠNG THÁI ONLINE TỪ SERVER
+// NHẬN TRẠNG THÁI VÀ ĐẾM NGƯỢC TỪ SERVER
 // ==========================================
 
 if (socket) {
+
+    // Nhận trạng thái bàn cờ
     socket.on("gameState", (state) => {
         if (botMode) return;
 
@@ -345,6 +433,38 @@ if (socket) {
         updatePlayers(state.players || []);
         updateStatus(state);
         renderBoard(state);
+
+        // Phòng chưa đủ người thì hiển thị màn hình chờ
+        if (state.status === "waiting") {
+            showWaitingOverlay();
+        }
+    });
+
+    // Nhận số đếm ngược từ server
+    socket.on("countdown", (data) => {
+        if (botMode) return;
+
+        const count = typeof data === "number"
+            ? data
+            : data?.count;
+
+        if (Number.isFinite(count)) {
+            showCountdown(count);
+        }
+    });
+
+    // Server báo đếm ngược đã kết thúc
+    socket.on("countdownEnd", () => {
+        if (botMode) return;
+
+        showCountdownStart();
+
+        // Giữ chữ BẮT ĐẦU một chút rồi ẩn
+        setTimeout(() => {
+            hideCountdown();
+        }, 800);
+
+        showToast("🎮 BẮT ĐẦU TRẬN ĐẤU!");
     });
 }
 
@@ -402,6 +522,8 @@ function startBotGame() {
         return;
     }
 
+    hideCountdown();
+
     clearTimeout(botTimer);
 
     botMode = true;
@@ -444,8 +566,7 @@ function startBotGame() {
     showToast(`Đang chơi với máy - ${getDifficultyName()}`);
 }
 
-// TÊN ĐỘ KHÓ
-
+// Tên độ khó
 function getDifficultyName() {
     if (botDifficulty === "easy") return "Dễ";
     if (botDifficulty === "hard") return "Khó";
@@ -453,8 +574,7 @@ function getDifficultyName() {
     return "Trung bình";
 }
 
-// GẮN SỰ KIỆN NÚT CHƠI VỚI MÁY
-
+// Gắn sự kiện nút chơi với máy
 if (playBotBtn) {
     playBotBtn.addEventListener("click", startBotGame);
 } else {
@@ -727,7 +847,6 @@ function chooseBotMove(board) {
     if (!candidates.length) return null;
 
     // MỨC DỄ: ĐÁNH NGẪU NHIÊN
-
     if (botDifficulty === "easy") {
         return candidates[
             Math.floor(Math.random() * candidates.length)
@@ -735,7 +854,6 @@ function chooseBotMove(board) {
     }
 
     // ƯU TIÊN ĐÁNH THẮNG NGAY
-
     for (const move of candidates) {
         if (
             isWinningMove(
@@ -750,7 +868,6 @@ function chooseBotMove(board) {
     }
 
     // ƯU TIÊN CHẶN NGƯỜI CHƠI THẮNG
-
     for (const move of candidates) {
         if (
             isWinningMove(
@@ -765,7 +882,6 @@ function chooseBotMove(board) {
     }
 
     // CHẤM ĐIỂM CÁC NƯỚC ĐI
-
     const scoredMoves = candidates.map(move => {
         const attack = scoreMove(
             board,
@@ -808,7 +924,6 @@ function chooseBotMove(board) {
     scoredMoves.sort((a, b) => b.score - a.score);
 
     // TRUNG BÌNH: ĐÔI KHI CHỌN NƯỚC KHÁC
-
     if (
         botDifficulty === "medium" &&
         Math.random() < 0.18
@@ -824,7 +939,6 @@ function chooseBotMove(board) {
     }
 
     // KHÓ: CHỌN NƯỚC ĐI CÓ ĐIỂM CAO NHẤT
-
     return scoredMoves[0];
 }
 
@@ -849,6 +963,10 @@ restartBtn.addEventListener("click", () => {
             showToast(
                 result?.message || "Không thể chơi lại!"
             );
+
+            if (currentState) {
+                updateStatus(currentState);
+            }
         }
     });
 });
@@ -873,6 +991,8 @@ copyCodeBtn.addEventListener("click", async () => {
 // ==========================================
 
 function leaveCurrentRoom() {
+    hideCountdown();
+
     clearTimeout(botTimer);
 
     if (currentRoom && socket) {
@@ -914,7 +1034,6 @@ if (socket) {
     });
 
     // KẾT NỐI
-
     socket.on("connect", () => {
         console.log(
             "Đã kết nối máy chủ:",
@@ -924,6 +1043,8 @@ if (socket) {
 
     socket.on("disconnect", () => {
         if (!botMode) {
+            hideCountdown();
+
             statusEl.textContent =
                 "Mất kết nối máy chủ...";
         }
@@ -943,22 +1064,22 @@ if (socket) {
 // HIỆU ỨNG MŨI TÊN CHỌN ĐỘ KHÓ
 // ==========================================
 
-const difficultyWrapper = document.getElementById("difficultyWrapper");
-const difficultySelect = document.getElementById("botDifficulty");
+const difficultyWrapper =
+    document.getElementById("difficultyWrapper");
+
+const difficultySelect =
+    document.getElementById("botDifficulty");
 
 if (difficultyWrapper && difficultySelect) {
 
-    // Bấm vào ô chọn: xoay mũi tên lên
     difficultySelect.addEventListener("pointerdown", () => {
         difficultyWrapper.classList.toggle("open");
     });
 
-    // Chọn xong: xoay mũi tên xuống
     difficultySelect.addEventListener("change", () => {
         difficultyWrapper.classList.remove("open");
     });
 
-    // Nhấn Enter hoặc Space để mở
     difficultySelect.addEventListener("keydown", (event) => {
         if (
             event.key === "Enter" ||
@@ -972,14 +1093,12 @@ if (difficultyWrapper && difficultySelect) {
         }
     });
 
-    // Bấm ra ngoài ô chọn
     document.addEventListener("pointerdown", (event) => {
         if (!difficultyWrapper.contains(event.target)) {
             difficultyWrapper.classList.remove("open");
         }
     });
 
-    // Mất focus thì đóng
     difficultySelect.addEventListener("blur", () => {
         difficultyWrapper.classList.remove("open");
     });
