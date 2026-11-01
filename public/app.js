@@ -1,208 +1,171 @@
-
 const socket = io();
 
-const $ = id => document.getElementById(id);
+const $ = (id) => document.getElementById(id);
 
-let mySymbol = null;
-let roomCode = null;
-let latestState = null;
+/* Lấy đúng các phần tử theo index.html */
+const nameInput = $("playerName");
+const roomInput = $("roomCodeInput");
 
-const lobby = $("lobby");
-const game = $("game");
+const createBtn = $("createBtn");
+const joinBtn = $("joinBtn");
+const backBtn = $("backBtn");
+const copyCodeBtn = $("copyCodeBtn");
+const restartBtn = $("restartBtn");
+
+const lobbyEl = $("lobby");
+const gameEl = $("game");
 const boardEl = $("board");
 
-let toastTimer;
+const roomCodeEl = $("roomCodeLabel");
+const statusEl = $("statusText");
+const lobbyMessage = $("lobbyMessage");
+const gameMessage = $("gameMessage");
+const toastEl = $("toast");
 
+const playerXEl = $("playerX");
+const playerOEl = $("playerO");
+const nameXEl = $("nameX");
+const nameOEl = $("nameO");
+const youXEl = $("youX");
+const youOEl = $("youO");
+
+const SIZE = 15;
+
+let mySymbol = null;
+let currentRoom = null;
+let currentState = null;
+let toastTimeout = null;
+
+/* Thông báo nhỏ trên màn hình */
 function showToast(message) {
-    const el = $("toast");
+    toastEl.textContent = message;
+    toastEl.classList.add("show");
 
-    el.textContent = message;
-    el.classList.add("show");
+    clearTimeout(toastTimeout);
 
-    clearTimeout(toastTimer);
-
-    toastTimer = setTimeout(() => {
-        el.classList.remove("show");
-    }, 2500);
+    toastTimeout = setTimeout(() => {
+        toastEl.classList.remove("show");
+    }, 2200);
 }
 
-function playerName() {
-    return $("playerName").value.trim() || "Người chơi";
+/* Hiển thị lỗi */
+function showLobbyError(message) {
+    lobbyMessage.textContent = message;
 }
 
-function enterGame(code, symbol) {
-    roomCode = code;
-    mySymbol = symbol;
-
-    $("roomCodeLabel").textContent = code;
-
-    lobby.classList.add("hidden");
-    game.classList.remove("hidden");
+function showGameMessage(message) {
+    gameMessage.textContent = message;
 }
 
+/* Gửi sự kiện có callback */
+function emitWithAck(eventName, data, callback) {
+    socket.emit(eventName, data, (result) => {
+        if (!result) {
+            callback({
+                ok: false,
+                message: "Không nhận được phản hồi từ máy chủ."
+            });
+            return;
+        }
+
+        callback(result);
+    });
+}
+
+/* Tạo bàn cờ 15 x 15 đúng một lần */
 function createBoard() {
     boardEl.innerHTML = "";
 
-    for (let r = 0; r < 15; r++) {
-        for (let c = 0; c < 15; c++) {
+    const fragment = document.createDocumentFragment();
 
+    for (let row = 0; row < SIZE; row++) {
+        for (let col = 0; col < SIZE; col++) {
             const cell = document.createElement("button");
 
-            cell.className = "cell";
             cell.type = "button";
+            cell.className = "cell";
+            cell.disabled = true;
+            cell.dataset.row = row;
+            cell.dataset.col = col;
+            cell.setAttribute(
+                "aria-label",
+                `Hàng ${row + 1}, cột ${col + 1}`
+            );
 
             cell.addEventListener("click", () => {
-
-                if (
-                    !latestState ||
-                    latestState.status !== "playing"
-                ) return;
-
-                socket.emit("makeMove", {
-                    code: roomCode,
-                    row: r,
-                    col: c
-                }, result => {
-                    if (result && !result.ok) {
-                        showToast(result.message);
-                    }
-                });
-
+                makeMove(row, col);
             });
 
-            boardEl.appendChild(cell);
+            fragment.appendChild(cell);
         }
     }
+
+    boardEl.appendChild(fragment);
 }
 
 createBoard();
 
-// TẠO PHÒNG
-$("createBtn").onclick = () => {
+/* Cập nhật thông tin hai người chơi */
+function updatePlayers(players = []) {
+    const playerX = players.find(p => p.symbol === "X");
+    const playerO = players.find(p => p.symbol === "O");
 
-    $("lobbyMessage").textContent = "";
+    nameXEl.textContent = playerX
+        ? playerX.name
+        : "Đang chờ người chơi...";
 
-    socket.emit("createRoom", {
-        name: playerName()
-    }, result => {
+    nameOEl.textContent = playerO
+        ? playerO.name
+        : "Đang chờ người chơi...";
 
-        if (!result.ok) {
-            $("lobbyMessage").textContent =
-                "Không thể tạo phòng!";
-            return;
-        }
+    youXEl.textContent = mySymbol === "X" ? "BẠN" : "";
+    youOEl.textContent = mySymbol === "O" ? "BẠN" : "";
+}
 
-        enterGame(result.code, result.symbol);
-    });
-};
-
-// THAM GIA PHÒNG
-$("joinBtn").onclick = () => {
-
-    $("lobbyMessage").textContent = "";
-
-    const code = $("roomCodeInput")
-        .value.trim().toUpperCase();
-
-    if (!code) {
-        $("lobbyMessage").textContent =
-            "Vui lòng nhập mã phòng!";
-        return;
-    }
-
-    socket.emit("joinRoom", {
-        code,
-        name: playerName()
-    }, result => {
-
-        if (!result.ok) {
-            $("lobbyMessage").textContent =
-                result.message;
-            return;
-        }
-
-        enterGame(result.code, result.symbol);
-    });
-};
-
-// NHẬN TRẠNG THÁI GAME
-socket.on("gameState", state => {
-
-    if (state.code !== roomCode) return;
-
-    latestState = state;
-
-    $("nameX").textContent =
-        state.players.find(p => p.symbol === "X")?.name
-        || "Đang chờ...";
-
-    $("nameO").textContent =
-        state.players.find(p => p.symbol === "O")?.name
-        || "Đang chờ...";
-
-    $("youX").textContent =
-        mySymbol === "X" ? "BẠN" : "";
-
-    $("youO").textContent =
-        mySymbol === "O" ? "BẠN" : "";
-
-    $("playerX").classList.toggle(
+/* Đánh dấu người đang tới lượt */
+function updateTurnDisplay(state) {
+    playerXEl.classList.toggle(
         "active",
-        state.turn === "X" && state.status === "playing"
+        state.status === "playing" && state.turn === "X"
     );
 
-    $("playerO").classList.toggle(
+    playerOEl.classList.toggle(
         "active",
-        state.turn === "O" && state.status === "playing"
+        state.status === "playing" && state.turn === "O"
     );
+}
 
-    $("restartBtn").disabled =
-        state.players.length < 2;
-
-    if (state.status === "waiting") {
-
-        $("statusText").textContent =
-            "Đang chờ người chơi thứ hai...";
-
-    } else if (state.status === "playing") {
-
-        $("statusText").textContent =
-            state.turn === mySymbol
-                ? "Đến lượt bạn!"
-                : "Đang chờ đối thủ đánh...";
-
-    } else if (state.status === "finished") {
-
-        $("statusText").textContent =
-            state.winner === mySymbol
-                ? "🎉 Bạn đã chiến thắng!"
-                : "Đối thủ đã chiến thắng!";
-
-    } else {
-
-        $("statusText").textContent =
-            "Hai người hòa nhau!";
-    }
-
+/* Tạo hoặc cập nhật quân cờ */
+function updateBoard(state) {
     const winning = new Set(
-        (state.winningCells || [])
-        .map(([r, c]) => `${r},${c}`)
+        (state.winningCells || []).map(
+            ([row, col]) => `${row},${col}`
+        )
     );
 
     [...boardEl.children].forEach((cell, index) => {
+        const row = Math.floor(index / SIZE);
+        const col = index % SIZE;
+        const value = state.board[row][col];
 
-        const r = Math.floor(index / 15);
-        const c = index % 15;
+        let stone = cell.querySelector(".stone");
 
-        const value = state.board[r][c];
+        if (value) {
+            if (!stone) {
+                stone = document.createElement("span");
+                stone.className = "stone";
+                cell.appendChild(stone);
+            }
 
-        cell.innerHTML = value
-            ? `<span class="stone ${value.toLowerCase()}">${value}</span>`
-            : "";
+            stone.className = `stone ${String(value).toLowerCase()}`;
+            stone.textContent = value;
+        } else if (stone) {
+            stone.remove();
+        }
 
         cell.classList.toggle(
             "winning",
-            winning.has(`${r},${c}`)
+            winning.has(`${row},${col}`)
         );
 
         cell.disabled =
@@ -210,56 +173,238 @@ socket.on("gameState", state => {
             state.status !== "playing" ||
             state.turn !== mySymbol;
     });
-});
+}
 
-// CHƠI LẠI
-$("restartBtn").onclick = () => {
+/* Cập nhật trạng thái trận đấu */
+function updateStatus(state) {
+    if (state.status === "waiting") {
+        statusEl.textContent = "Đang chờ người chơi thứ hai...";
+    } else if (state.status === "playing") {
+        statusEl.textContent = state.turn === mySymbol
+            ? "Đến lượt ông! Hãy chọn một ô."
+            : `Đang chờ quân ${state.turn} đánh...`;
+    } else if (state.status === "finished") {
+        statusEl.textContent = state.winner === mySymbol
+            ? "🎉 Ông đã chiến thắng!"
+            : `Quân ${state.winner} đã chiến thắng!`;
+    } else if (state.status === "draw") {
+        statusEl.textContent = "🤝 Hai bên hòa nhau!";
+    }
 
-    socket.emit("restartGame", {
-        code: roomCode
-    }, result => {
+    restartBtn.disabled =
+        state.status !== "finished" &&
+        state.status !== "draw";
+}
+
+/* Tạo phòng */
+createBtn.addEventListener("click", () => {
+    const name = nameInput.value.trim();
+
+    showLobbyError("");
+
+    if (!name) {
+        showLobbyError("Ông nhập tên người chơi trước nhé!");
+        nameInput.focus();
+        return;
+    }
+
+    createBtn.disabled = true;
+
+    emitWithAck("createRoom", { name }, (result) => {
+        createBtn.disabled = false;
 
         if (!result.ok) {
-            showToast(result.message);
+            showLobbyError(result.message || "Không tạo được phòng.");
+            return;
         }
+
+        enterGame(result);
+        showToast("Đã tạo phòng thành công!");
     });
-};
-
-// SAO CHÉP MÃ PHÒNG
-$("copyCodeBtn").onclick = async () => {
-
-    try {
-        await navigator.clipboard.writeText(roomCode);
-        showToast("Đã sao chép mã phòng!");
-
-    } catch {
-        showToast("Mã phòng: " + roomCode);
-    }
-};
-
-// RỜI PHÒNG
-$("backBtn").onclick = () => {
-
-    if (roomCode) {
-        socket.emit("leaveRoom", {
-            code: roomCode
-        });
-    }
-
-    roomCode = null;
-    mySymbol = null;
-    latestState = null;
-
-    game.classList.add("hidden");
-    lobby.classList.remove("hidden");
-};
-
-// ĐỐI THỦ RỜI PHÒNG
-socket.on("opponentLeft", () => {
-    showToast("Đối thủ đã rời phòng!");
 });
 
-// MẤT KẾT NỐI
+/* Tham gia phòng */
+joinBtn.addEventListener("click", () => {
+    const name = nameInput.value.trim();
+    const code = roomInput.value.trim().toUpperCase();
+
+    showLobbyError("");
+
+    if (!name) {
+        showLobbyError("Ông nhập tên người chơi trước nhé!");
+        nameInput.focus();
+        return;
+    }
+
+    if (!code) {
+        showLobbyError("Ông nhập mã phòng nhé!");
+        roomInput.focus();
+        return;
+    }
+
+    joinBtn.disabled = true;
+
+    emitWithAck("joinRoom", { name, code }, (result) => {
+        joinBtn.disabled = false;
+
+        if (!result.ok) {
+            showLobbyError(result.message || "Không vào được phòng.");
+            return;
+        }
+
+        enterGame(result);
+        showToast("Đã vào phòng thành công!");
+    });
+});
+
+/* Vào giao diện trận đấu sau khi server xác nhận */
+function enterGame(result) {
+    currentRoom = result.code;
+    mySymbol = result.symbol;
+
+    roomCodeEl.textContent = currentRoom;
+
+    lobbyEl.classList.add("hidden");
+    gameEl.classList.remove("hidden");
+
+    showGameMessage("");
+
+    createBoard();
+
+    statusEl.textContent = `Ông đang chơi quân ${mySymbol}`;
+}
+
+/* Gửi nước đi */
+function makeMove(row, col) {
+    if (!currentRoom || !currentState) return;
+    if (currentState.status !== "playing") return;
+    if (currentState.turn !== mySymbol) return;
+
+    const value = currentState.board[row][col];
+
+    if (value !== null) return;
+
+    emitWithAck(
+        "makeMove",
+        {
+            code: currentRoom,
+            row,
+            col
+        },
+        (result) => {
+            if (!result.ok) {
+                showToast(result.message || "Nước đi không hợp lệ.");
+            }
+        }
+    );
+}
+
+/* Nhận trạng thái mới từ server */
+socket.on("gameState", (state) => {
+    currentState = state;
+
+    updatePlayers(state.players || []);
+    updateTurnDisplay(state);
+    updateBoard(state);
+    updateStatus(state);
+});
+
+/* Chơi ván mới */
+restartBtn.addEventListener("click", () => {
+    if (!currentRoom) return;
+
+    restartBtn.disabled = true;
+
+    emitWithAck(
+        "restartGame",
+        { code: currentRoom },
+        (result) => {
+            if (!result.ok) {
+                showToast(result.message || "Không thể chơi lại.");
+                restartBtn.disabled = false;
+            } else {
+                showGameMessage("");
+                showToast("Đã bắt đầu ván mới!");
+            }
+        }
+    );
+});
+
+/* Sao chép mã phòng */
+copyCodeBtn.addEventListener("click", async () => {
+    if (!currentRoom) return;
+
+    try {
+        await navigator.clipboard.writeText(currentRoom);
+        showToast("Đã sao chép mã phòng!");
+    } catch {
+        showToast(`Mã phòng: ${currentRoom}`);
+    }
+});
+
+/* Rời phòng và quay về sảnh */
+backBtn.addEventListener("click", () => {
+    if (!currentRoom) {
+        returnToLobby();
+        return;
+    }
+
+    backBtn.disabled = true;
+
+    emitWithAck("leaveRoom", { code: currentRoom }, (result) => {
+        backBtn.disabled = false;
+
+        if (!result.ok) {
+            showToast(result.message || "Không thể rời phòng.");
+        }
+    });
+});
+
+/* Trở về sảnh */
+function returnToLobby() {
+    currentRoom = null;
+    mySymbol = null;
+    currentState = null;
+
+    gameEl.classList.add("hidden");
+    lobbyEl.classList.remove("hidden");
+
+    roomCodeEl.textContent = "------";
+    statusEl.textContent = "Đang chờ người chơi thứ hai...";
+
+    showGameMessage("");
+    restartBtn.disabled = true;
+
+    createBoard();
+}
+
+/* Server xác nhận đã rời phòng */
+socket.on("roomLeft", () => {
+    returnToLobby();
+    showToast("Đã rời phòng.");
+});
+
+/* Đối thủ rời phòng */
+socket.on("opponentLeft", () => {
+    showToast("Đối thủ đã rời phòng.");
+});
+
+/* Lỗi từ server */
+socket.on("errorMessage", (message) => {
+    showToast(message);
+});
+
+/* Mất kết nối */
 socket.on("disconnect", () => {
-    showToast("Mất kết nối máy chủ!");
+    if (currentRoom) {
+        statusEl.textContent = "Mất kết nối máy chủ...";
+    }
+});
+
+/* Kết nối lại */
+socket.on("connect", () => {
+    if (currentRoom) {
+        statusEl.textContent =
+            "Đã kết nối lại. Nếu phòng không còn, hãy tạo phòng mới.";
+    }
 });
